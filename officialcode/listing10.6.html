@@ -1,0 +1,81 @@
+<html>
+<head>
+  <title>Listing 10.6</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="#444444">/* The interrupt handler */</font>
+<strong>static</strong> <font color="#2040a0">irqreturn_t</font>
+<font color="#2040a0">mydevice_interrupt</font><font color="4444FF">(</font><strong>int</strong> <font color="#2040a0">irq</font>, <strong>void</strong> <font color="4444FF">*</font><font color="#2040a0">devid</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>struct</strong> <font color="#2040a0">sk_buff</font> <font color="4444FF">*</font><font color="#2040a0">skb</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* ... */</font>
+
+    <font color="#444444">/* If this is a receive interrupt, collect the packet and pass it
+       on to higher layers. Look at the control word in each RX DMA
+       descriptor to figure out whether it contains data. Assume for
+       convenience that the first RX descriptor was used by the card
+       to DMA this received packet */</font>
+    <font color="#2040a0">packet_size</font> <font color="4444FF">=</font> <font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_buffer_rx</font><font color="4444FF">[</font><font color="#FF0000">1</font><font color="4444FF">]</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* In real world drivers, the sk_buff is pre-allocated, streammapped,
+       and supplied to the card after setting the FREE_FLAG
+       during device open(). The received data is directly
+       DMA’ed to this sk_buff instead of the memcpy() performed here,
+       as you will learn in Chapter 15. The card clears the FREE_FLAG
+       before the DMA */</font>
+    <font color="#2040a0">skb</font> <font color="4444FF">=</font> <font color="#2040a0">dev_alloc_skb</font><font color="4444FF">(</font><font color="#2040a0">packet_size</font><font color="4444FF">)</font><font color="4444FF">;</font> <font color="#444444">/* See Figure 15.2 of Chapter 15 */</font>
+    <font color="#2040a0">skb</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dev</font> <font color="4444FF">=</font> <font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">ndev</font><font color="4444FF">;</font> <font color="#444444">/* Owner network device */</font>
+    <font color="#2040a0">memcpy</font><font color="4444FF">(</font><font color="#2040a0">skb</font>, <font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_buffer_rx</font><font color="4444FF">[</font><font color="#FF0000">24</font><font color="4444FF">]</font>, <font color="#2040a0">packet_size</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Pass the received data to higher-layer protocols */</font>
+    <font color="#2040a0">skb_put</font><font color="4444FF">(</font><font color="#2040a0">skb</font>, <font color="#2040a0">packet_size</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">netif_rx</font><font color="4444FF">(</font><font color="#2040a0">skb</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* ... */</font>
+
+    <font color="#444444">/* Make the descriptor available to the card again */</font>
+    <font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_buffer_rx</font><font color="4444FF">[</font><font color="#FF0000">2</font><font color="4444FF">]</font> <font color="4444FF">|</font><font color="4444FF">=</font> <font color="#2040a0">FREE_FLAG</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* This function is registered in Listing 10.3 and is called from
+   the networking layer. More on network device interfaces in
+   Chapter 15 */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">mydevice_xmit</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">sk_buff</font> <font color="4444FF">*</font><font color="#2040a0">skb</font>, <strong>struct</strong> <font color="#2040a0">net_device</font> <font color="4444FF">*</font><font color="#2040a0">dev</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* Use a valid TX descriptor. Look at Figure 10.2 */</font>
+    <font color="#444444">/* Locking has been omitted for simplicity */</font>
+
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_buffer_tx</font><font color="4444FF">[</font><font color="#FF0000">2</font><font color="4444FF">]</font> <font color="4444FF">&amp;</font> <font color="#2040a0">FREE_FLAG</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#444444">/* Use first TX descriptor */</font>
+        <font color="#444444">/* In the real world, DMA occurs directly from the sk_buff as
+           you will learn later on! */</font>
+        <font color="#2040a0">memcpy</font><font color="4444FF">(</font><font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_buffer_tx</font><font color="4444FF">[</font><font color="#FF0000">24</font><font color="4444FF">]</font>, <font color="#2040a0">skb</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">data</font>, <font color="#2040a0">skb</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">len</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_buffer_tx</font><font color="4444FF">[</font><font color="#FF0000">1</font><font color="4444FF">]</font> <font color="4444FF">=</font> <font color="#2040a0">skb</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">len</font><font color="4444FF">;</font>
+        <font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_buffer_tx</font><font color="4444FF">[</font><font color="#FF0000">2</font><font color="4444FF">]</font> <font color="4444FF">&amp;</font><font color="4444FF">=</font> ~<font color="#2040a0">FREE_FLAG</font><font color="4444FF">;</font>
+        <font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_buffer_tx</font><font color="4444FF">[</font><font color="#FF0000">2</font><font color="4444FF">]</font> <font color="4444FF">|</font><font color="4444FF">=</font> <font color="#2040a0">INTERRUPT_FLAG</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font> <strong>else</strong> <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_buffer</font><font color="4444FF">[</font><font color="#FF0000">5</font><font color="4444FF">]</font> <font color="4444FF">&amp;</font> <font color="#2040a0">FREE_FLAG</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#444444">/* Use second TX descriptor */</font>
+        <font color="#2040a0">memcpy</font><font color="4444FF">(</font><font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_buffer_tx</font><font color="4444FF">[</font><font color="#FF0000">1560</font><font color="4444FF">]</font>, <font color="#2040a0">skb</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">data</font>, <font color="#2040a0">skb</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">len</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_buffer_tx</font><font color="4444FF">[</font><font color="#FF0000">4</font><font color="4444FF">]</font> <font color="4444FF">=</font> <font color="#2040a0">skb</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">len</font><font color="4444FF">;</font>
+        <font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_buffer_tx</font><font color="4444FF">[</font><font color="#FF0000">5</font><font color="4444FF">]</font> <font color="4444FF">&amp;</font><font color="4444FF">=</font> ~<font color="#2040a0">FREE_FLAG</font><font color="4444FF">;</font>
+        <font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_buffer_tx</font><font color="4444FF">[</font><font color="#FF0000">5</font><font color="4444FF">]</font> <font color="4444FF">|</font><font color="4444FF">=</font> <font color="#2040a0">INTERRUPT_FLAG</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font> <strong>else</strong> <font color="4444FF"><strong>{</strong></font>
+        <strong>return</strong> <font color="4444FF">-</font><font color="#2040a0">EIO</font><font color="4444FF">;</font> <font color="#444444">/* Signal error to the caller */</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#2040a0">wmb</font><font color="4444FF">(</font><font color="4444FF">)</font><font color="4444FF">;</font> <font color="#444444">/* Don’t reorder writes across this barrier */</font>
+
+    <font color="#444444">/* Ask the card to initiate DMA. ioaddr is defined
+       in Listing 10.3 */</font>
+    <font color="#2040a0">outl</font><font color="4444FF">(</font><font color="#2040a0">INITIATE_XMIT</font>, <font color="#2040a0">ioaddr</font> <font color="4444FF">+</font> <font color="#2040a0">CONTROL_REGISTER</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

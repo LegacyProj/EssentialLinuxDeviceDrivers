@@ -1,0 +1,109 @@
+<html>
+<head>
+  <title>Listing 11.6</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="#2040a0">include</font>/<font color="#2040a0">scsi</font>/<font color="#2040a0">scsi_host</font>.<font color="#2040a0">h</font><font color="4444FF">:</font>
+<strong>struct</strong> <font color="#2040a0">Scsi_Host</font> <font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* ... */</font>
+    <strong>void</strong> <font color="4444FF">*</font><font color="#2040a0">shost_data</font><font color="4444FF">;</font>
+<font color="4444FF">+</font>   <strong>char</strong> <font color="#2040a0">snam</font><font color="4444FF">[</font><font color="#FF0000">8</font><font color="4444FF">]</font><font color="4444FF">;</font> <font color="#444444">/* /dev node name for this disk */</font>
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+
+<font color="#2040a0">drivers</font>/<font color="#2040a0">usb</font>/<font color="#2040a0">storage</font>/<font color="#2040a0">usb</font>.<font color="#2040a0">h</font><font color="4444FF">:</font>
+<strong>struct</strong> <font color="#2040a0">us_data</font> <font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* ... */</font>
+<font color="4444FF">+</font>   <strong>char</strong> <font color="#2040a0">magic</font><font color="4444FF">[</font><font color="#FF0000">4</font><font color="4444FF">]</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+
+<font color="#2040a0">include</font>/<font color="#2040a0">linux</font>/<font color="#2040a0">usb</font>.<font color="#2040a0">h</font><font color="4444FF">:</font>
+<strong>struct</strong> <font color="#2040a0">usb_interface</font> <font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* ... */</font>
+<font color="4444FF">+</font>   <strong>void</strong> <font color="4444FF">*</font><font color="#2040a0">private_data</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+
+<font color="#2040a0">drivers</font>/<font color="#2040a0">usb</font>/<font color="#2040a0">storage</font>/<font color="#2040a0">usb</font>.<font color="#2040a0">c</font><font color="4444FF">:</font>
+<strong>static</strong> <strong>int</strong> <font color="#2040a0">storage_probe</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">usb_interface</font> <font color="4444FF">*</font><font color="#2040a0">intf</font>,
+                         <strong>const</strong> <strong>struct</strong> <font color="#2040a0">usb_device_id</font> <font color="4444FF">*</font><font color="#2040a0">id</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* ... */</font>
+    <font color="#2040a0">memset</font><font color="4444FF">(</font><font color="#2040a0">us</font>, <font color="#FF0000">0</font>, <strong>sizeof</strong><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">us_data</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF">+</font>   <font color="#2040a0">intf</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">private_data</font> <font color="4444FF">=</font> <font color="4444FF">(</font><strong>void</strong> <font color="4444FF">*</font><font color="4444FF">)</font> <font color="#2040a0">us</font><font color="4444FF">;</font>
+<font color="4444FF">+</font>   <font color="#2040a0">strncpy</font><font color="4444FF">(</font><font color="#2040a0">us</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">magic</font>, <font color="#008000">&quot;disk&quot;</font>, <font color="#FF0000">4</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">mutex_init</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="4444FF">(</font><font color="#2040a0">us</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dev_mutex</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#2040a0">drivers</font>/<font color="#2040a0">scsi</font>/<font color="#2040a0">sd</font>.<font color="#2040a0">c</font><font color="4444FF">:</font>
+<strong>static</strong> <strong>int</strong> <font color="#2040a0">sd_probe</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">device</font> <font color="4444FF">*</font><font color="#2040a0">dev</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* ... */</font>
+    <font color="#2040a0">add_disk</font><font color="4444FF">(</font><font color="#2040a0">gd</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF">+</font>   <font color="#2040a0">memset</font><font color="4444FF">(</font><font color="#2040a0">sdp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">host</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">snam</font>,<font color="#FF0000">0</font>, <strong>sizeof</strong><font color="4444FF">(</font><font color="#2040a0">sdp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">host</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">snam</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF">+</font>   <font color="#2040a0">strncpy</font><font color="4444FF">(</font><font color="#2040a0">sdp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">host</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">snam</font>, <font color="#2040a0">gd</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">disk_name</font>, <font color="#FF0000">3</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">sdev_printk</font><font color="4444FF">(</font><font color="#2040a0">KERN_NOTICE</font>, <font color="#2040a0">sdp</font>, <font color="#008000">&quot;Attached scsi %sdisk %s<font color="#77dd77">\n</font>&quot;</font>,
+                <font color="#2040a0">sdp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">removable</font> ? <font color="#008000">&quot;removable &quot;</font> <font color="4444FF">:</font> <font color="#008000">&quot;&quot;</font>, <font color="#2040a0">gd</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">disk_name</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#2040a0">drivers</font>/<font color="#2040a0">scsi</font>/<font color="#2040a0">sr</font>.<font color="#2040a0">c</font><font color="4444FF">:</font>
+<strong>static</strong> <strong>int</strong> <font color="#2040a0">sr_probe</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">device</font> <font color="4444FF">*</font><font color="#2040a0">dev</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* ... */</font>
+    <font color="#2040a0">add_disk</font><font color="4444FF">(</font><font color="#2040a0">disk</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF">+</font>   <font color="#2040a0">memset</font><font color="4444FF">(</font><font color="#2040a0">sdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">host</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">snam</font>,<font color="#FF0000">0</font>, <strong>sizeof</strong><font color="4444FF">(</font><font color="#2040a0">sdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">host</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">snam</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF">+</font>   <font color="#2040a0">strncpy</font><font color="4444FF">(</font><font color="#2040a0">sdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">host</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">snam</font>, <font color="#2040a0">cd</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">cdi</font>.<font color="#2040a0">name</font>, <font color="#FF0000">3</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">sdev_printk</font><font color="4444FF">(</font><font color="#2040a0">KERN_DEBUG</font>, <font color="#2040a0">sdev</font>, <font color="#008000">&quot;Attached scsi CD-ROM %s<font color="#77dd77">\n</font>&quot;</font>,
+                <font color="#2040a0">cd</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">cdi</font>.<font color="#2040a0">name</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#2040a0">drivers</font>/<font color="#2040a0">usb</font>/<font color="#2040a0">core</font>/<font color="#2040a0">devices</font>.<font color="#2040a0">c</font><font color="4444FF">:</font>
+<font color="#444444">/* ... */</font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;asm/uaccess.h&gt;</font></strong></font>
+<font color="4444FF">+</font> #<font color="#2040a0">include</font> <font color="4444FF">&lt;</font><font color="#2040a0">scsi</font>/<font color="#2040a0">scsi_host</font>.<font color="#2040a0">h</font><font color="4444FF">&gt;</font>
+<font color="4444FF">+</font> #<font color="#2040a0">include</font> <font color="#008000">&quot;../storage/usb.h&quot;</font>
+
+<strong>static</strong> <font color="#2040a0">ssize_t</font> <font color="#2040a0">usb_device_dump</font><font color="4444FF">(</font><strong>char</strong> <font color="#2040a0">__user</font> <font color="4444FF">*</font><font color="4444FF">*</font><font color="#2040a0">buffer</font>, <font color="#2040a0">size_t</font> <font color="4444FF">*</font><font color="#2040a0">nbytes</font>,
+                               <font color="#2040a0">loff_t</font> <font color="4444FF">*</font><font color="#2040a0">skip_bytes</font>, <font color="#2040a0">loff_t</font> <font color="4444FF">*</font><font color="#2040a0">file_offset</font>,
+                               <strong>struct</strong> <font color="#2040a0">usb_device</font> <font color="4444FF">*</font><font color="#2040a0">usbdev</font>,
+                               <strong>struct</strong> <font color="#2040a0">usb_bus</font> <font color="4444FF">*</font><font color="#2040a0">bus</font>, <strong>int</strong> <font color="#2040a0">level</font>,
+                               <strong>int</strong> <font color="#2040a0">index</font>, <strong>int</strong> <font color="#2040a0">count</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* ... */</font>
+    <font color="#2040a0">ssize_t</font> <font color="#2040a0">total_written</font> <font color="4444FF">=</font> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF">+</font>   <strong>struct</strong> <font color="#2040a0">us_data</font> <font color="4444FF">*</font><font color="#2040a0">us_d</font><font color="4444FF">;</font>
+<font color="4444FF">+</font>   <strong>struct</strong> <font color="#2040a0">Scsi_Host</font> <font color="4444FF">*</font><font color="#2040a0">s_h</font><font color="4444FF">;</font>
+    <font color="#444444">/* ... */</font>
+    <font color="#2040a0">data_end</font> <font color="4444FF">=</font> <font color="#2040a0">pages_start</font> <font color="4444FF">+</font> <font color="#2040a0">sprintf</font><font color="4444FF">(</font><font color="#2040a0">pages_start</font>, <font color="#2040a0">format_topo</font>,
+                                     <font color="#2040a0">bus</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">busnum</font>, <font color="#2040a0">level</font>,
+                                     <font color="#2040a0">parent_devnum</font>,
+                                     <font color="#2040a0">index</font>, <font color="#2040a0">count</font>, <font color="#2040a0">usbdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">devnum</font>,
+                                     <font color="#2040a0">speed</font>, <font color="#2040a0">usbdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">maxchild</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF">+</font>   <font color="#444444">/* Assume this device supports only one interface */</font>
+<font color="4444FF">+</font>   <font color="#2040a0">us_d</font> <font color="4444FF">=</font> <font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">us_data</font> <font color="4444FF">*</font><font color="4444FF">)</font>
+<font color="4444FF">+</font>   <font color="4444FF">(</font><font color="#2040a0">usbdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">actconfig</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">interface</font><font color="4444FF">[</font><font color="#FF0000">0</font><font color="4444FF">]</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">private_data</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF">+</font>
+<font color="4444FF">+</font>   <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">(</font><font color="#2040a0">us_d</font><font color="4444FF">)</font> <font color="4444FF">&amp;</font><font color="4444FF">&amp;</font> <font color="4444FF">(</font><font color="4444FF">!</font><font color="#2040a0">strncmp</font><font color="4444FF">(</font><font color="#2040a0">us_d</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">magic</font>, <font color="#008000">&quot;disk&quot;</font>, <font color="#FF0000">4</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+<font color="4444FF">+</font>       <font color="#2040a0">s_h</font> <font color="4444FF">=</font> <font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">Scsi_Host</font> <font color="4444FF">*</font><font color="4444FF">)</font> <font color="#2040a0">container_of</font><font color="4444FF">(</font><font color="4444FF">(</font><strong>void</strong> <font color="4444FF">*</font><font color="4444FF">)</font><font color="#2040a0">us_d</font>,
+<font color="4444FF">+</font>             <strong>struct</strong> <font color="#2040a0">Scsi_Host</font>,
+<font color="4444FF">+</font>             <font color="#2040a0">hostdata</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF">+</font>       <font color="#2040a0">data_end</font> <font color="4444FF">+</font><font color="4444FF">=</font> <font color="#2040a0">sprintf</font><font color="4444FF">(</font><font color="#2040a0">data_end</font>, <font color="#008000">&quot;N: &quot;</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF">+</font>       <font color="#2040a0">data_end</font> <font color="4444FF">+</font><font color="4444FF">=</font> <font color="#2040a0">sprintf</font><font color="4444FF">(</font><font color="#2040a0">data_end</font>, <font color="#008000">&quot;Device=%.100s&quot;</font>,<font color="#2040a0">s_h</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">snam</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF">+</font>       <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">!</font><font color="#2040a0">strncmp</font><font color="4444FF">(</font><font color="#2040a0">s_h</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">snam</font>, <font color="#008000">&quot;sr&quot;</font>, <font color="#FF0000">2</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+<font color="4444FF">+</font>           <font color="#2040a0">data_end</font> <font color="4444FF">+</font><font color="4444FF">=</font> <font color="#2040a0">sprintf</font><font color="4444FF">(</font><font color="#2040a0">data_end</font>, <font color="#008000">&quot; (CDROM)<font color="#77dd77">\n</font>&quot;</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF">+</font>       <font color="4444FF"><strong>}</strong></font> <strong>else</strong> <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">!</font><font color="#2040a0">strncmp</font><font color="4444FF">(</font><font color="#2040a0">s_h</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">snam</font>, <font color="#008000">&quot;sd&quot;</font>, <font color="#FF0000">2</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+<font color="4444FF">+</font>           <font color="#2040a0">data_end</font> <font color="4444FF">+</font><font color="4444FF">=</font> <font color="#2040a0">sprintf</font><font color="4444FF">(</font><font color="#2040a0">data_end</font>, <font color="#008000">&quot; (Disk)<font color="#77dd77">\n</font>&quot;</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF">+</font>       <font color="4444FF"><strong>}</strong></font>
+<font color="4444FF">+</font>   <font color="4444FF"><strong>}</strong></font>
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

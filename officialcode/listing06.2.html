@@ -1,0 +1,44 @@
+<html>
+<head>
+  <title>Listing 6.2</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<strong>struct</strong> <font color="#2040a0">tty_ldisc</font> <font color="#2040a0">n_touch_ldisc</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font>
+    <font color="#2040a0">TTY_LDISC_MAGIC</font>,         <font color="#444444">/* Magic */</font>
+    <font color="#008000">&quot;n_tch&quot;</font>,                 <font color="#444444">/* Name of the line discipline */</font>
+    <font color="#2040a0">N_TCH</font>,                   <font color="#444444">/* Line discipline ID number */</font>
+    <font color="#2040a0">n_touch_open</font>,            <font color="#444444">/* Open the line discipline */</font>
+    <font color="#2040a0">n_touch_close</font>,           <font color="#444444">/* Close the line discipline */</font>
+    <font color="#2040a0">n_touch_flush_buffer</font>,    <font color="#444444">/* Flush the line discipline's read
+                                buffer */</font>
+    <font color="#2040a0">n_touch_chars_in_buffer</font>, <font color="#444444">/* Get the number of processed characters in
+                                the line discipline's read buffer */</font>
+    <font color="#2040a0">n_touch_read</font>,            <font color="#444444">/* Called when data is requested
+                                from user space */</font>
+    <font color="#2040a0">n_touch_write</font>,           <font color="#444444">/* Write method */</font>
+    <font color="#2040a0">n_touch_ioctl</font>,           <font color="#444444">/* I/O Control commands */</font>
+    <font color="#2040a0">NULL</font>,                    <font color="#444444">/* We don't have a set_termios
+                                routine */</font>
+    <font color="#2040a0">n_touch_poll</font>,            <font color="#444444">/* Poll */</font>
+    <font color="#2040a0">n_touch_receive_buf</font>,     <font color="#444444">/* Called by the low-level driver
+                                to pass data to user space*/</font>
+    <font color="#2040a0">n_touch_receive_room</font>,    <font color="#444444">/* Returns the room left in the line
+                                discipline's read buffer */</font>
+    <font color="#2040a0">n_touch_write_wakeup</font>     <font color="#444444">/* Called when the low-level device
+                                driver is ready to transmit more
+                                data */</font>
+<font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+
+<font color="#444444">/* ... */</font>
+
+<strong>if</strong> <font color="4444FF">(</font><font color="4444FF">(</font><font color="#2040a0">err</font> <font color="4444FF">=</font> <font color="#2040a0">tty_register_ldisc</font><font color="4444FF">(</font><font color="#2040a0">N_TCH</font>, <font color="4444FF">&amp;</font><font color="#2040a0">n_touch_ldisc</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+    <strong>return</strong> <font color="#2040a0">err</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

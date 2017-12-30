@@ -1,0 +1,64 @@
+<html>
+<head>
+  <title>Listing 22.1</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="0000ff"><strong># Check that compilation tools are installed</strong></font>
+<font color="0000ff"><strong>#...</strong></font>
+
+<font color="0000ff"><strong># Assume that $user contains the user name, $cvsserver contains</strong></font>
+<font color="0000ff"><strong># the CVS server name and /path/to/repository is the location</strong></font>
+<font color="0000ff"><strong># of your project's repository on the CVS server</strong></font>
+<font color="#2040a0">CVS</font><font color="4444FF">=</font><font color="#008000">&quot;cvs -d :pserver:$user@$cvsserver:/path/to/repository&quot;</font>
+$<font color="#2040a0">CVS</font> <font color="#2040a0">login</font>
+
+<font color="0000ff"><strong># Check-out the kernel</strong></font>
+$<font color="#2040a0">CVS</font> <font color="#2040a0">checkout</font> <font color="#2040a0">kernel</font>
+
+<font color="0000ff"><strong># Build the kernel</strong></font>
+<font color="#2040a0">cd</font> <font color="#2040a0">kernel</font>
+<font color="#2040a0">make</font> <font color="#2040a0">mrproper</font>
+<font color="0000ff"><strong>#Get the .config file for your platform</strong></font>
+<font color="#2040a0">cp</font> <font color="#2040a0">arch</font>/<font color="#2040a0">your</font><font color="4444FF">-</font><font color="#2040a0">arch</font>/<font color="#2040a0">configs</font>/<font color="#2040a0">your_platform_defconfig</font> .<font color="#2040a0">config</font>
+<font color="#2040a0">make</font> <font color="#2040a0">oldconfig</font>
+<font color="#2040a0">make</font> <font color="4444FF">-</font><font color="#2040a0">j5</font> <font color="#2040a0">bzImage</font> # <font color="#2040a0">Accelerate</font> <font color="#2040a0">by</font> <font color="#2040a0">spawning</font> <font color="#FF0000">5</font> <font color="#2040a0">instances</font> <font color="#2040a0">of</font> '<font color="#2040a0">make</font>'
+<strong>if</strong> <font color="4444FF">[</font> $? <font color="4444FF">!</font><font color="4444FF">=</font> <font color="#FF0000">0</font> <font color="4444FF">]</font>
+<font color="#2040a0">then</font>
+<font color="#2040a0">echo</font> <font color="#008000">&quot;Error building Kernel. Bailing out..&quot;</font>
+<font color="#2040a0">exit</font> <font color="#FF0000">1</font>
+<font color="#2040a0">fi</font>
+
+<font color="0000ff"><strong># Copy the kernel image to a target directory</strong></font>
+<font color="#2040a0">cp</font> <font color="#2040a0">arch</font>/<font color="#2040a0">x86</font>/<font color="#2040a0">boot</font>/<font color="#2040a0">bzImage</font> /<font color="#2040a0">path</font>/<font color="#2040a0">to</font>/<font color="#2040a0">target_directory</font>/<font color="#2040a0">productname</font>.<font color="#2040a0">kernel</font>
+
+<font color="0000ff"><strong># Build modules and install them in an appropriate directory</strong></font>
+<font color="#2040a0">make</font> <font color="#2040a0">modules</font>
+<strong>if</strong> <font color="4444FF">[</font> $? <font color="4444FF">!</font><font color="4444FF">=</font> <font color="#FF0000">0</font> <font color="4444FF">]</font>
+<font color="#2040a0">then</font>
+<font color="#2040a0">echo</font> <font color="#008000">&quot;Error building modules. Bailing..&quot;</font>
+<font color="#2040a0">exit</font> <font color="#FF0000">2</font>
+<font color="#2040a0">fi</font>
+
+<font color="#2040a0">export</font> <font color="#2040a0">INSTALL_MOD_PATH</font><font color="4444FF">=</font><font color="#008000">&quot;$TARGET_DIRECTORY/modules&quot;</font>
+<font color="#2040a0">make</font> <font color="#2040a0">modules_install</font>
+
+<font color="0000ff"><strong># Rebuild after forcing generation of identical MD5 sums and</strong></font>
+<font color="0000ff"><strong># package the resulting checksum information.</strong></font>
+<font color="0000ff"><strong>#...</strong></font>
+
+<font color="0000ff"><strong># Generate a source patch from the base starting point, assuming</strong></font>
+<font color="0000ff"><strong># that KERNELBASE is the CVS tag for the vanilla kernel</strong></font>
+<font color="#2040a0">cvs</font> <font color="#2040a0">rdiff</font> <font color="4444FF">-</font><font color="#2040a0">u</font> <font color="4444FF">-</font><font color="#2040a0">r</font> <font color="#2040a0">KERNELBASE</font> <font color="#2040a0">kernel</font> <font color="4444FF">&gt;</font> <font color="#2040a0">patch</font>.<font color="#2040a0">kernel</font>
+
+<font color="0000ff"><strong># Generate a changelog using <font color="#008000">&quot;cvs log&quot;</font></strong></font>
+<font color="0000ff"><strong>#...</strong></font>
+
+<font color="0000ff"><strong># Package everything nicely into a tar ball</strong></font>
+<font color="0000ff"><strong>#...</strong></font>
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

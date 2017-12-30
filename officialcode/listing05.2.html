@@ -1,0 +1,47 @@
+<html>
+<head>
+  <title>Listing 5.2</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="#444444">/*
+ * Open CMOS bank
+ */</font>
+<strong>int</strong>
+<font color="#2040a0">cmos_open</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">inode</font> <font color="4444FF">*</font><font color="#2040a0">inode</font>, <strong>struct</strong> <font color="#2040a0">file</font> <font color="4444FF">*</font><font color="#2040a0">file</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>struct</strong> <font color="#2040a0">cmos_dev</font> <font color="4444FF">*</font><font color="#2040a0">cmos_devp</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Get the per-device structure that contains this cdev */</font>
+    <font color="#2040a0">cmos_devp</font> <font color="4444FF">=</font> <font color="#2040a0">container_of</font><font color="4444FF">(</font><font color="#2040a0">inode</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">i_cdev</font>, <strong>struct</strong> <font color="#2040a0">cmos_dev</font>, <font color="#2040a0">cdev</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Easy access to cmos_devp from rest of the entry points */</font>
+    <font color="#2040a0">file</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">private_data</font> <font color="4444FF">=</font> <font color="#2040a0">cmos_devp</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Initialize some fields */</font>
+    <font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">size</font> <font color="4444FF">=</font> <font color="#2040a0">CMOS_BANK_SIZE</font><font color="4444FF">;</font>
+    <font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">current_pointer</font> <font color="4444FF">=</font> <font color="#FF0000">0</font><font color="4444FF">;</font>
+
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/*
+ * Release CMOS bank
+ */</font>
+<strong>int</strong>
+<font color="#2040a0">cmos_release</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">inode</font> <font color="4444FF">*</font><font color="#2040a0">inode</font>, <strong>struct</strong> <font color="#2040a0">file</font> <font color="4444FF">*</font><font color="#2040a0">file</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>struct</strong> <font color="#2040a0">cmos_dev</font> <font color="4444FF">*</font><font color="#2040a0">cmos_devp</font> <font color="4444FF">=</font> <font color="#2040a0">file</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">private_data</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Reset file pointer */</font>
+    <font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">current_pointer</font> <font color="4444FF">=</font> <font color="#FF0000">0</font><font color="4444FF">;</font>
+
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

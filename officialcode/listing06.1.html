@@ -1,0 +1,377 @@
+<html>
+<head>
+  <title>Listing 6.1</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="0000ff"><strong>#include <font color="#008000">&lt;linux/console.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;linux/platform_device.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;linux/tty.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;linux/tty_flip.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;linux/serial_core.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;linux/serial.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;asm/irq.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;asm/io.h&gt;</font></strong></font>
+
+<font color="0000ff"><strong>#define USB_UART_MAJOR 200     <font color="#444444"> /* You've to get this assigned */</font></strong></font>
+<font color="0000ff"><strong>#define USB_UART_MINOR_START 70<font color="#444444"> /* Start minor numbering here */</font></strong></font>
+<font color="0000ff"><strong>#define USB_UART_PORTS 2       <font color="#444444"> /* The phone has 2 USB_UARTs */</font></strong></font>
+<font color="0000ff"><strong>#define PORT_USB_UART 30        /* UART type. Add this to</strong></font>
+                                   <font color="#2040a0">include</font>/<font color="#2040a0">linux</font>/<font color="#2040a0">serial_core</font>.<font color="#2040a0">h</font> <font color="4444FF">*</font>/
+
+<font color="#444444">/* Each USB_UART has a 3-byte register set consisting of
+   UU_STATUS_REGISTER at offset 0, UU_READ_DATA_REGISTER at
+   offset 1, and UU_WRITE_DATA_REGISTER at offset 2 as shown
+   in Table 6.1 */</font>
+<font color="0000ff"><strong>#define USB_UART1_BASE 0xe8000000<font color="#444444"> /* Memory base for USB_UART1 */</font></strong></font>
+<font color="0000ff"><strong>#define USB_UART2_BASE 0xe9000000<font color="#444444"> /* Memory base for USB_UART2 */</font></strong></font>
+<font color="0000ff"><strong>#define USB_UART_REGISTER_SPACE 0x3</strong></font>
+
+<font color="#444444">/* Semantics of bits in the status register */</font>
+<font color="0000ff"><strong>#define USB_UART_TX_FULL 0x20 <font color="#444444"> /* TX FIFO is full */</font></strong></font>
+<font color="0000ff"><strong>#define USB_UART_RX_EMPTY 0x10<font color="#444444"> /* TX FIFO is empty */</font></strong></font>
+<font color="0000ff"><strong>#define USB_UART_STATUS 0x0F  <font color="#444444"> /* Parity/frame/overruns? */</font></strong></font>
+
+<font color="0000ff"><strong>#define USB_UART1_IRQ 3       <font color="#444444"> /* USB_UART1 IRQ */</font></strong></font>
+<font color="0000ff"><strong>#define USB_UART2_IRQ 4       <font color="#444444"> /* USB_UART2 IRQ */</font></strong></font>
+<font color="0000ff"><strong>#define USB_UART_FIFO_SIZE 32 <font color="#444444"> /* FIFO size */</font></strong></font>
+<font color="0000ff"><strong>#define USB_UART_CLK_FREQ 16000000</strong></font>
+
+<strong>static</strong> <strong>struct</strong> <font color="#2040a0">uart_port</font> <font color="#2040a0">usb_uart_port</font><font color="4444FF">[</font><font color="4444FF">]</font><font color="4444FF">;</font> <font color="#444444">/* Defined later on */</font>
+
+<font color="#444444">/* Write a character to the USB_UART port */</font>
+<strong>static</strong> <strong>void</strong>
+<font color="#2040a0">usb_uart_putc</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">uart_port</font> <font color="4444FF">*</font><font color="#2040a0">port</font>, <strong>unsigned</strong> <strong>char</strong> <font color="#2040a0">c</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* Wait until there is space in the TX FIFO of the USB_UART.
+       Sense this by looking at the USB_UART_TX_FULL bit in the
+       status register */</font>
+    <strong>while</strong> <font color="4444FF">(</font><font color="#2040a0">__raw_readb</font><font color="4444FF">(</font><font color="#2040a0">port</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">membase</font><font color="4444FF">)</font> <font color="4444FF">&amp;</font> <font color="#2040a0">USB_UART_TX_FULL</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#444444">/* Write the character to the data port*/</font>
+    <font color="#2040a0">__raw_writeb</font><font color="4444FF">(</font><font color="#2040a0">c</font>, <font color="4444FF">(</font><font color="#2040a0">port</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">membase</font><font color="4444FF">+</font><font color="#FF0000">1</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Read a character from the USB_UART */</font>
+<strong>static</strong> <strong>unsigned</strong> <strong>char</strong>
+<font color="#2040a0">usb_uart_getc</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">uart_port</font> <font color="4444FF">*</font><font color="#2040a0">port</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* Wait until data is available in the RX_FIFO */</font>
+    <strong>while</strong> <font color="4444FF">(</font><font color="#2040a0">__raw_readb</font><font color="4444FF">(</font><font color="#2040a0">port</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">membase</font><font color="4444FF">)</font> <font color="4444FF">&amp;</font> <font color="#2040a0">USB_UART_RX_EMPTY</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#444444">/* Obtain the data */</font>
+    <strong>return</strong><font color="4444FF">(</font><font color="#2040a0">__raw_readb</font><font color="4444FF">(</font><font color="#2040a0">port</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">membase</font><font color="4444FF">+</font><font color="#FF0000">2</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Obtain USB_UART status */</font>
+<strong>static</strong> <strong>unsigned</strong> <strong>char</strong>
+<font color="#2040a0">usb_uart_status</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">uart_port</font> <font color="4444FF">*</font><font color="#2040a0">port</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>return</strong><font color="4444FF">(</font><font color="#2040a0">__raw_readb</font><font color="4444FF">(</font><font color="#2040a0">port</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">membase</font><font color="4444FF">)</font> <font color="4444FF">&amp;</font> <font color="#2040a0">USB_UART_STATUS</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/*
+ * Claim the memory region attached to USB_UART port. Called
+ * when the driver adds a USB_UART port via uart_add_one_port().
+ */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">usb_uart_request_port</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">uart_port</font> <font color="4444FF">*</font><font color="#2040a0">port</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">!</font><font color="#2040a0">request_mem_region</font><font color="4444FF">(</font><font color="#2040a0">port</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">mapbase</font>, <font color="#2040a0">USB_UART_REGISTER_SPACE</font>,
+                            <font color="#008000">&quot;usb_uart&quot;</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <strong>return</strong> <font color="4444FF">-</font><font color="#2040a0">EBUSY</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Release the memory region attached to a USB_UART port.
+ * Called when the driver removes a USB_UART port via
+ * uart_remove_one_port().
+ */</font>
+<strong>static</strong> <strong>void</strong>
+<font color="#2040a0">usb_uart_release_port</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">uart_port</font> <font color="4444FF">*</font><font color="#2040a0">port</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#2040a0">release_mem_region</font><font color="4444FF">(</font><font color="#2040a0">port</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">mapbase</font>, <font color="#2040a0">USB_UART_REGISTER_SPACE</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/*
+ * Configure USB_UART. Called when the driver adds a USB_UART port.
+ */</font>
+<strong>static</strong> <strong>void</strong>
+<font color="#2040a0">usb_uart_config_port</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">uart_port</font> <font color="4444FF">*</font><font color="#2040a0">port</font>, <strong>int</strong> <font color="#2040a0">flags</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">flags</font> <font color="4444FF">&amp;</font> <font color="#2040a0">UART_CONFIG_TYPE</font> <font color="4444FF">&amp;</font><font color="4444FF">&amp;</font> <font color="#2040a0">usb_uart_request_port</font><font color="4444FF">(</font><font color="#2040a0">port</font><font color="4444FF">)</font> <font color="4444FF">=</font><font color="4444FF">=</font> <font color="#FF0000">0</font><font color="4444FF">)</font>
+        <font color="4444FF"><strong>{</strong></font>
+            <font color="#2040a0">port</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">type</font> <font color="4444FF">=</font> <font color="#2040a0">PORT_USB_UART</font><font color="4444FF">;</font>
+        <font color="4444FF"><strong>}</strong></font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Receive interrupt handler */</font>
+<strong>static</strong> <font color="#2040a0">irqreturn_t</font>
+<font color="#2040a0">usb_uart_rxint</font><font color="4444FF">(</font><strong>int</strong> <font color="#2040a0">irq</font>, <strong>void</strong> <font color="4444FF">*</font><font color="#2040a0">dev_id</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>struct</strong> <font color="#2040a0">uart_port</font> <font color="4444FF">*</font><font color="#2040a0">port</font> <font color="4444FF">=</font> <font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">uart_port</font> <font color="4444FF">*</font><font color="4444FF">)</font> <font color="#2040a0">dev_id</font><font color="4444FF">;</font>
+    <strong>struct</strong> <font color="#2040a0">tty_struct</font> <font color="4444FF">*</font><font color="#2040a0">tty</font> <font color="4444FF">=</font> <font color="#2040a0">port</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">info</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">tty</font><font color="4444FF">;</font>
+    <strong>unsigned</strong> <strong>int</strong> <font color="#2040a0">status</font>, <font color="#2040a0">data</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* ... */</font>
+
+    <strong>do</strong> <font color="4444FF"><strong>{</strong></font>
+        <font color="#444444">/* ... */</font>
+        <font color="#444444">/* Read data */</font>
+        <font color="#2040a0">data</font> <font color="4444FF">=</font> <font color="#2040a0">usb_uart_getc</font><font color="4444FF">(</font><font color="#2040a0">port</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#444444">/* Normal, overrun, parity, frame error? */</font>
+        <font color="#2040a0">status</font> <font color="4444FF">=</font> <font color="#2040a0">usb_uart_status</font><font color="4444FF">(</font><font color="#2040a0">port</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#444444">/* Dispatch to the tty layer */</font>
+        <font color="#2040a0">tty_insert_flip_char</font><font color="4444FF">(</font><font color="#2040a0">tty</font>, <font color="#2040a0">data</font>, <font color="#2040a0">status</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#444444">/* ... */</font>
+    <font color="4444FF"><strong>}</strong></font> <strong>while</strong> <font color="4444FF">(</font><font color="#2040a0">more_chars_to_be_read</font><font color="4444FF">(</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">;</font> <font color="#444444">/* More chars */</font>
+
+    <font color="#444444">/* ... */</font>
+
+    <font color="#2040a0">tty_flip_buffer_push</font><font color="4444FF">(</font><font color="#2040a0">tty</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>return</strong> <font color="#2040a0">IRQ_HANDLED</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Called when an application opens a USB_UART */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">usb_uart_startup</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">uart_port</font> <font color="4444FF">*</font><font color="#2040a0">port</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>int</strong> <font color="#2040a0">retval</font> <font color="4444FF">=</font> <font color="#FF0000">0</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* ... */</font>
+
+    <font color="#444444">/* Request IRQ */</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">(</font><font color="#2040a0">retval</font> <font color="4444FF">=</font> <font color="#2040a0">request_irq</font><font color="4444FF">(</font><font color="#2040a0">port</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">irq</font>, <font color="#2040a0">usb_uart_rxint</font>, <font color="#FF0000">0</font>,
+                              <font color="#008000">&quot;usb_uart&quot;</font>, <font color="4444FF">(</font><strong>void</strong> <font color="4444FF">*</font><font color="4444FF">)</font><font color="#2040a0">port</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <strong>return</strong> <font color="#2040a0">retval</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#444444">/* ... */</font>
+
+    <strong>return</strong> <font color="#2040a0">retval</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Called when an application closes a USB_UART */</font>
+<strong>static</strong> <strong>void</strong>
+<font color="#2040a0">usb_uart_shutdown</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">uart_port</font> <font color="4444FF">*</font><font color="#2040a0">port</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* ... */</font>
+    <font color="#444444">/* Free IRQ */</font>
+    <font color="#2040a0">free_irq</font><font color="4444FF">(</font><font color="#2040a0">port</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">irq</font>, <font color="#2040a0">port</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#444444">/* Disable interrupts by writing to appropriate
+       registers */</font>
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Set UART type to USB_UART */</font>
+<strong>static</strong> <strong>const</strong> <strong>char</strong> <font color="4444FF">*</font>
+<font color="#2040a0">usb_uart_type</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">uart_port</font> <font color="4444FF">*</font><font color="#2040a0">port</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>return</strong> <font color="#2040a0">port</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">type</font> <font color="4444FF">=</font><font color="4444FF">=</font> <font color="#2040a0">PORT_USB_UART</font> ? <font color="#008000">&quot;USB_UART&quot;</font> <font color="4444FF">:</font> <font color="#2040a0">NULL</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Start transmitting bytes */</font>
+<strong>static</strong> <strong>void</strong>
+<font color="#2040a0">usb_uart_start_tx</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">uart_port</font> <font color="4444FF">*</font><font color="#2040a0">port</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>while</strong> <font color="4444FF">(</font><font color="#FF0000">1</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#444444">/* Get the data from the UART circular buffer and
+           write it to the USB_UART's WRITE_DATA register */</font>
+        <font color="#2040a0">usb_uart_putc</font><font color="4444FF">(</font><font color="#2040a0">port</font>,
+                      <font color="#2040a0">port</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">info</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">xmit</font>.<font color="#2040a0">buf</font><font color="4444FF">[</font><font color="#2040a0">port</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">info</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">xmit</font>.<font color="#2040a0">tail</font><font color="4444FF">]</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+        <font color="#444444">/* Adjust the tail of the UART buffer */</font>
+        <font color="#2040a0">port</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">info</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">xmit</font>.<font color="#2040a0">tail</font> <font color="4444FF">=</font> <font color="4444FF">(</font><font color="#2040a0">port</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">info</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">xmit</font>.<font color="#2040a0">tail</font> <font color="4444FF">+</font> <font color="#FF0000">1</font><font color="4444FF">)</font> <font color="4444FF">&amp;</font>
+            <font color="4444FF">(</font><font color="#2040a0">UART_XMIT_SIZE</font> <font color="4444FF">-</font> <font color="#FF0000">1</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+        <font color="#444444">/* Statistics */</font>
+        <font color="#2040a0">port</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">icount</font>.<font color="#2040a0">tx</font><font color="4444FF">+</font><font color="4444FF">+</font><font color="4444FF">;</font>
+
+        <font color="#444444">/* Finish if no more data available in the UART buffer */</font>
+        <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">uart_circ_empty</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">port</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">info</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">xmit</font><font color="4444FF">)</font><font color="4444FF">)</font> <strong>break</strong><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* The UART operations structure */</font>
+<strong>static</strong> <strong>struct</strong> <font color="#2040a0">uart_ops</font> <font color="#2040a0">usb_uart_ops</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font>
+    .<font color="#2040a0">start_tx</font> <font color="4444FF">=</font> <font color="#2040a0">usb_uart_start_tx</font>,        <font color="#444444">/* Start transmitting */</font>
+    .<font color="#2040a0">startup</font> <font color="4444FF">=</font> <font color="#2040a0">usb_uart_startup</font>,          <font color="#444444">/* App opens USB_UART */</font>
+    .<font color="#2040a0">shutdown</font> <font color="4444FF">=</font> <font color="#2040a0">usb_uart_shutdown</font>,        <font color="#444444">/* App closes USB_UART */</font>
+    .<font color="#2040a0">type</font> <font color="4444FF">=</font> <font color="#2040a0">usb_uart_type</font>,                <font color="#444444">/* Set UART type */</font>
+    .<font color="#2040a0">config_port</font> <font color="4444FF">=</font> <font color="#2040a0">usb_uart_config_port</font>,  <font color="#444444">/* Configure when driver
+                                             adds a USB_UART port */</font>
+    .<font color="#2040a0">request_port</font> <font color="4444FF">=</font> <font color="#2040a0">usb_uart_request_port</font>,<font color="#444444">/* Claim resources
+                                             associated with a
+                                             USB_UART port */</font>
+    .<font color="#2040a0">release_port</font> <font color="4444FF">=</font> <font color="#2040a0">usb_uart_release_port</font>,<font color="#444444">/* Release resources
+                                             associated with a
+                                             USB_UART port */</font>
+<font color="0000ff"><strong>#if 0<font color="#444444"> /* Left unimplemented for the USB_UART */</font></strong></font>
+    .<font color="#2040a0">tx_empty</font> <font color="4444FF">=</font> <font color="#2040a0">usb_uart_tx_empty</font>,        <font color="#444444">/* Transmitter busy? */</font>
+    .<font color="#2040a0">set_mctrl</font> <font color="4444FF">=</font> <font color="#2040a0">usb_uart_set_mctrl</font>,      <font color="#444444">/* Set modem control */</font>
+    .<font color="#2040a0">get_mctrl</font> <font color="4444FF">=</font> <font color="#2040a0">usb_uart_get_mctrl</font>,      <font color="#444444">/* Get modem control */</font>
+    .<font color="#2040a0">stop_tx</font> <font color="4444FF">=</font> <font color="#2040a0">usb_uart_stop_tx</font>,          <font color="#444444">/* Stop transmission */</font>
+    .<font color="#2040a0">stop_rx</font> <font color="4444FF">=</font> <font color="#2040a0">usb_uart_stop_rx</font>,          <font color="#444444">/* Stop reception */</font>
+    .<font color="#2040a0">enable_ms</font> <font color="4444FF">=</font> <font color="#2040a0">usb_uart_enable_ms</font>,      <font color="#444444">/* Enable modem status
+                                             signals */</font>
+    .<font color="#2040a0">set_termios</font> <font color="4444FF">=</font> <font color="#2040a0">usb_uart_set_termios</font>,  <font color="#444444">/* Set termios */</font>
+<font color="0000ff"><strong>#endif</strong></font>
+<font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+
+<strong>static</strong> <strong>struct</strong> <font color="#2040a0">uart_driver</font> <font color="#2040a0">usb_uart_reg</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font>
+    .<font color="#2040a0">owner</font> <font color="4444FF">=</font> <font color="#2040a0">THIS_MODULE</font>,          <font color="#444444">/* Owner */</font>
+    .<font color="#2040a0">driver_name</font> <font color="4444FF">=</font> <font color="#008000">&quot;usb_uart&quot;</font>,     <font color="#444444">/* Driver name */</font>
+    .<font color="#2040a0">dev_name</font> <font color="4444FF">=</font> <font color="#008000">&quot;ttyUU&quot;</font>,           <font color="#444444">/* Node name */</font>
+    .<font color="#2040a0">major</font> <font color="4444FF">=</font> <font color="#2040a0">USB_UART_MAJOR</font>,       <font color="#444444">/* Major number */</font>
+    .<font color="#2040a0">minor</font> <font color="4444FF">=</font> <font color="#2040a0">USB_UART_MINOR_START</font>, <font color="#444444">/* Minor number start */</font>
+    .<font color="#2040a0">nr</font> <font color="4444FF">=</font> <font color="#2040a0">USB_UART_PORTS</font>,          <font color="#444444">/* Number of UART ports */</font>
+    .<font color="#2040a0">cons</font> <font color="4444FF">=</font> <font color="4444FF">&amp;</font><font color="#2040a0">usb_uart_console</font>,     <font color="#444444">/* Pointer to the console
+                                      structure. Discussed in Chapter
+                                      12, &quot;Video Drivers&quot; */</font>
+<font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+
+<font color="#444444">/* Called when the platform driver is unregistered */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">usb_uart_remove</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">platform_device</font> <font color="4444FF">*</font><font color="#2040a0">dev</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#2040a0">platform_set_drvdata</font><font color="4444FF">(</font><font color="#2040a0">dev</font>, <font color="#2040a0">NULL</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#444444">/* Remove the USB_UART port from the serial core */</font>
+    <font color="#2040a0">uart_remove_one_port</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">usb_uart_reg</font>, <font color="4444FF">&amp;</font><font color="#2040a0">usb_uart_port</font><font color="4444FF">[</font><font color="#2040a0">dev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">id</font><font color="4444FF">]</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Suspend power management event */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">usb_uart_suspend</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">platform_device</font> <font color="4444FF">*</font><font color="#2040a0">dev</font>, <font color="#2040a0">pm_message_t</font> <font color="#2040a0">state</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#2040a0">uart_suspend_port</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">usb_uart_reg</font>, <font color="4444FF">&amp;</font><font color="#2040a0">usb_uart_port</font><font color="4444FF">[</font><font color="#2040a0">dev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">id</font><font color="4444FF">]</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Resume after a previous suspend */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">usb_uart_resume</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">platform_device</font> <font color="4444FF">*</font><font color="#2040a0">dev</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#2040a0">uart_resume_port</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">usb_uart_reg</font>, <font color="4444FF">&amp;</font><font color="#2040a0">usb_uart_port</font><font color="4444FF">[</font><font color="#2040a0">dev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">id</font><font color="4444FF">]</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Parameters of each supported USB_UART port */</font>
+<strong>static</strong> <strong>struct</strong> <font color="#2040a0">uart_port</font> <font color="#2040a0">usb_uart_port</font><font color="4444FF">[</font><font color="4444FF">]</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font>
+    <font color="4444FF"><strong>{</strong></font>
+        .<font color="#2040a0">mapbase</font> <font color="4444FF">=</font> <font color="4444FF">(</font><strong>unsigned</strong> <strong>int</strong><font color="4444FF">)</font> <font color="#2040a0">USB_UART1_BASE</font>,
+        .<font color="#2040a0">iotype</font> <font color="4444FF">=</font> <font color="#2040a0">UPIO_MEM</font>,             <font color="#444444">/* Memory mapped */</font>
+        .<font color="#2040a0">irq</font> <font color="4444FF">=</font> <font color="#2040a0">USB_UART1_IRQ</font>,           <font color="#444444">/* IRQ */</font>
+        .<font color="#2040a0">uartclk</font> <font color="4444FF">=</font> <font color="#2040a0">USB_UART_CLK_FREQ</font>,   <font color="#444444">/* Clock HZ */</font>
+        .<font color="#2040a0">fifosize</font> <font color="4444FF">=</font> <font color="#2040a0">USB_UART_FIFO_SIZE</font>, <font color="#444444">/* Size of the FIFO */</font>
+        .<font color="#2040a0">ops</font> <font color="4444FF">=</font> <font color="4444FF">&amp;</font><font color="#2040a0">usb_uart_ops</font>,           <font color="#444444">/* UART operations */</font>
+        .<font color="#2040a0">flags</font> <font color="4444FF">=</font> <font color="#2040a0">UPF_BOOT_AUTOCONF</font>,     <font color="#444444">/* UART port flag */</font>
+        .<font color="#2040a0">line</font> <font color="4444FF">=</font> <font color="#FF0000">0</font>,                      <font color="#444444">/* UART port number */</font>
+    <font color="4444FF"><strong>}</strong></font>,
+    <font color="4444FF"><strong>{</strong></font>
+        .<font color="#2040a0">mapbase</font> <font color="4444FF">=</font> <font color="4444FF">(</font><strong>unsigned</strong> <strong>int</strong><font color="4444FF">)</font><font color="#2040a0">USB_UART2_BASE</font>,
+        .<font color="#2040a0">iotype</font> <font color="4444FF">=</font> <font color="#2040a0">UPIO_MEM</font>,             <font color="#444444">/* Memory mapped */</font>
+        .<font color="#2040a0">irq</font> <font color="4444FF">=</font> <font color="#2040a0">USB_UART2_IRQ</font>,           <font color="#444444">/* IRQ */</font>
+        .<font color="#2040a0">uartclk</font> <font color="4444FF">=</font> <font color="#2040a0">USB_UART_CLK_FREQ</font>,   <font color="#444444">/* CLock HZ */</font>
+        .<font color="#2040a0">fifosize</font> <font color="4444FF">=</font> <font color="#2040a0">USB_UART_FIFO_SIZE</font>, <font color="#444444">/* Size of the FIFO */</font>
+        .<font color="#2040a0">ops</font> <font color="4444FF">=</font> <font color="4444FF">&amp;</font><font color="#2040a0">usb_uart_ops</font>,           <font color="#444444">/* UART operations */</font>
+        .<font color="#2040a0">flags</font> <font color="4444FF">=</font> <font color="#2040a0">UPF_BOOT_AUTOCONF</font>,     <font color="#444444">/* UART port flag */</font>
+        .<font color="#2040a0">line</font> <font color="4444FF">=</font> <font color="#FF0000">1</font>,                      <font color="#444444">/* UART port number */</font>
+    <font color="4444FF"><strong>}</strong></font>
+<font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+
+<font color="#444444">/* Platform driver probe */</font>
+<strong>static</strong> <strong>int</strong> <font color="#2040a0">__init</font>
+<font color="#2040a0">usb_uart_probe</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">platform_device</font> <font color="4444FF">*</font><font color="#2040a0">dev</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* ... */</font>
+    <font color="#444444">/* Add a USB_UART port. This function also registers this device
+       with the tty layer and triggers invocation of the config_port()
+       entry point */</font>
+    <font color="#2040a0">uart_add_one_port</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">usb_uart_reg</font>, <font color="4444FF">&amp;</font><font color="#2040a0">usb_uart_port</font><font color="4444FF">[</font><font color="#2040a0">dev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">id</font><font color="4444FF">]</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">platform_set_drvdata</font><font color="4444FF">(</font><font color="#2040a0">dev</font>, <font color="4444FF">&amp;</font><font color="#2040a0">usb_uart_port</font><font color="4444FF">[</font><font color="#2040a0">dev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">id</font><font color="4444FF">]</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<strong>struct</strong> <font color="#2040a0">platform_device</font> <font color="4444FF">*</font><font color="#2040a0">usb_uart_plat_device1</font><font color="4444FF">;</font> <font color="#444444">/* Platform device
+                                                  for USB_UART 1 */</font>
+<strong>struct</strong> <font color="#2040a0">platform_device</font> <font color="4444FF">*</font><font color="#2040a0">usb_uart_plat_device2</font><font color="4444FF">;</font> <font color="#444444">/* Platform device
+                                                  for USB_UART 2 */</font>
+<strong>static</strong> <strong>struct</strong> <font color="#2040a0">platform_driver</font> <font color="#2040a0">usb_uart_driver</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font>
+    .<font color="#2040a0">probe</font> <font color="4444FF">=</font> <font color="#2040a0">usb_uart_probe</font>,             <font color="#444444">/* Probe method */</font>
+    .<font color="#2040a0">remove</font> <font color="4444FF">=</font> <font color="#2040a0">__exit_p</font><font color="4444FF">(</font><font color="#2040a0">usb_uart_remove</font><font color="4444FF">)</font>, <font color="#444444">/* Detach method */</font>
+    .<font color="#2040a0">suspend</font> <font color="4444FF">=</font> <font color="#2040a0">usb_uart_suspend</font>,         <font color="#444444">/* Power suspend */</font>
+    .<font color="#2040a0">resume</font> <font color="4444FF">=</font> <font color="#2040a0">usb_uart_resume</font>,           <font color="#444444">/* Resume after a suspend */</font>
+    .<font color="#2040a0">driver</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font>
+        .<font color="#2040a0">name</font> <font color="4444FF">=</font> <font color="#008000">&quot;usb_uart&quot;</font>,              <font color="#444444">/* Driver name */</font>
+    <font color="4444FF"><strong>}</strong></font>,
+<font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+
+<font color="#444444">/* Driver Initialization */</font>
+<strong>static</strong> <strong>int</strong> <font color="#2040a0">__init</font>
+<font color="#2040a0">usb_uart_init</font><font color="4444FF">(</font><strong>void</strong><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>int</strong> <font color="#2040a0">retval</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Register the USB_UART driver with the serial core */</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">(</font><font color="#2040a0">retval</font> <font color="4444FF">=</font> <font color="#2040a0">uart_register_driver</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">usb_uart_reg</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <strong>return</strong> <font color="#2040a0">retval</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#444444">/* Register platform device for USB_UART 1. Usually called
+       during architecture-specific setup */</font>
+    <font color="#2040a0">usb_uart_plat_device1</font> <font color="4444FF">=</font>
+        <font color="#2040a0">platform_device_register_simple</font><font color="4444FF">(</font><font color="#008000">&quot;usb_uart&quot;</font>, <font color="#FF0000">0</font>, <font color="#2040a0">NULL</font>, <font color="#FF0000">0</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">IS_ERR</font><font color="4444FF">(</font><font color="#2040a0">usb_uart_plat_device1</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#2040a0">uart_unregister_driver</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">usb_uart_reg</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <strong>return</strong> <font color="#2040a0">PTR_ERR</font><font color="4444FF">(</font><font color="#2040a0">usb_uart_plat_device1</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#444444">/* Register platform device for USB_UART 2. Usually called
+       during architecture-specific setup */</font>
+    <font color="#2040a0">usb_uart_plat_device2</font> <font color="4444FF">=</font>
+        <font color="#2040a0">platform_device_register_simple</font><font color="4444FF">(</font><font color="#008000">&quot;usb_uart&quot;</font>, <font color="#FF0000">1</font>, <font color="#2040a0">NULL</font>, <font color="#FF0000">0</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">IS_ERR</font><font color="4444FF">(</font><font color="#2040a0">usb_uart_plat_device2</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#2040a0">uart_unregister_driver</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">usb_uart_reg</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#2040a0">platform_device_unregister</font><font color="4444FF">(</font><font color="#2040a0">usb_uart_plat_device1</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <strong>return</strong> <font color="#2040a0">PTR_ERR</font><font color="4444FF">(</font><font color="#2040a0">usb_uart_plat_device2</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#444444">/* Announce a matching driver for the platform
+       devices registered above */</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">(</font><font color="#2040a0">retval</font> <font color="4444FF">=</font> <font color="#2040a0">platform_driver_register</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">usb_uart_driver</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#2040a0">uart_unregister_driver</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">usb_uart_reg</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#2040a0">platform_device_unregister</font><font color="4444FF">(</font><font color="#2040a0">usb_uart_plat_device1</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#2040a0">platform_device_unregister</font><font color="4444FF">(</font><font color="#2040a0">usb_uart_plat_device2</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Driver Exit */</font>
+<strong>static</strong> <strong>void</strong> <font color="#2040a0">__exit</font>
+<font color="#2040a0">usb_uart_exit</font><font color="4444FF">(</font><strong>void</strong><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* The order of unregistration is important. Unregistering the
+       UART driver before the platform driver will crash the system */</font>
+
+    <font color="#444444">/* Unregister the platform driver */</font>
+    <font color="#2040a0">platform_driver_unregister</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">usb_uart_driver</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Unregister the platform devices */</font>
+    <font color="#2040a0">platform_device_unregister</font><font color="4444FF">(</font><font color="#2040a0">usb_uart_plat_device1</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">platform_device_unregister</font><font color="4444FF">(</font><font color="#2040a0">usb_uart_plat_device2</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Unregister the USB_UART driver */</font>
+    <font color="#2040a0">uart_unregister_driver</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">usb_uart_reg</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#2040a0">module_init</font><font color="4444FF">(</font><font color="#2040a0">usb_uart_init</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="#2040a0">module_exit</font><font color="4444FF">(</font><font color="#2040a0">usb_uart_exit</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

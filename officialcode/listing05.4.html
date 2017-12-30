@@ -1,0 +1,44 @@
+<html>
+<head>
+  <title>Listing 5.4</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="#444444">/*
+ * Seek to a bit offset within a CMOS bank
+ */</font>
+<strong>static</strong> <font color="#2040a0">loff_t</font>
+<font color="#2040a0">cmos_llseek</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">file</font> <font color="4444FF">*</font><font color="#2040a0">file</font>, <font color="#2040a0">loff_t</font> <font color="#2040a0">offset</font>,
+            <strong>int</strong> <font color="#2040a0">orig</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>struct</strong> <font color="#2040a0">cmos_dev</font> <font color="4444FF">*</font><font color="#2040a0">cmos_devp</font> <font color="4444FF">=</font> <font color="#2040a0">file</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">private_data</font><font color="4444FF">;</font>
+
+    <strong>switch</strong> <font color="4444FF">(</font><font color="#2040a0">orig</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+    <strong>case</strong> <font color="#FF0000">0</font><font color="4444FF">:</font> <font color="#444444">/* SEEK_SET */</font>
+        <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">offset</font> <font color="4444FF">&gt;</font><font color="4444FF">=</font> <font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">size</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+            <strong>return</strong> <font color="4444FF">-</font><font color="#2040a0">EINVAL</font><font color="4444FF">;</font>
+        <font color="4444FF"><strong>}</strong></font>
+        <font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">current_pointer</font> <font color="4444FF">=</font> <font color="#2040a0">offset</font><font color="4444FF">;</font> <font color="#444444">/* Bit Offset */</font>
+        <strong>break</strong><font color="4444FF">;</font>
+    <strong>case</strong> <font color="#FF0000">1</font><font color="4444FF">:</font> <font color="#444444">/* SEEK_CURR */</font>
+        <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">(</font><font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">current_pointer</font> <font color="4444FF">+</font> <font color="#2040a0">offset</font><font color="4444FF">)</font> <font color="4444FF">&gt;</font><font color="4444FF">=</font>
+            <font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">size</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+            <strong>return</strong> <font color="4444FF">-</font><font color="#2040a0">EINVAL</font><font color="4444FF">;</font>
+        <font color="4444FF"><strong>}</strong></font>
+        <font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">current_pointer</font> <font color="4444FF">=</font> <font color="#2040a0">offset</font><font color="4444FF">;</font> <font color="#444444">/* Bit Offset */</font>
+        <strong>break</strong><font color="4444FF">;</font>
+    <strong>case</strong> <font color="#FF0000">2</font><font color="4444FF">:</font> <font color="#444444">/* SEEK_END - Not supported */</font>
+        <strong>return</strong> <font color="4444FF">-</font><font color="#2040a0">EINVAL</font><font color="4444FF">;</font>
+    <strong>default</strong><font color="4444FF">:</font>
+        <strong>return</strong> <font color="4444FF">-</font><font color="#2040a0">EINVAL</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <strong>return</strong><font color="4444FF">(</font><font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">current_pointer</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

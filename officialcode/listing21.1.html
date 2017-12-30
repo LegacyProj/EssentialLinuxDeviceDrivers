@@ -1,0 +1,27 @@
+<html>
+<head>
+  <title>Listing 21.1</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<strong>char</strong> <font color="#2040a0">buffer</font><font color="4444FF">;</font>
+
+<strong>int</strong>
+<font color="#2040a0">trojan_function</font><font color="4444FF">(</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>int</strong> <font color="4444FF">*</font><font color="#2040a0">my_variable</font> <font color="4444FF">=</font> <font color="#FF0000">0xAB</font>, <font color="#2040a0">i</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* ... */</font>
+
+    <font color="#2040a0">Point</font> <font color="#2040a0">A</font><font color="4444FF">:</font>
+        <font color="#2040a0">i</font> <font color="4444FF">=</font> <font color="4444FF">*</font><font color="#2040a0">my_variable</font><font color="4444FF">;</font> <font color="#444444">/* Kernel Panic: my_variable points
+                             to bad memory */</font>
+    <strong>return</strong><font color="4444FF">(</font><font color="#2040a0">i</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

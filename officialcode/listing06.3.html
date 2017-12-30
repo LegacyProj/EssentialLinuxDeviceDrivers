@@ -1,0 +1,54 @@
+<html>
+<head>
+  <title>Listing 6.3</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="#444444">/* Private structure used to implement the Finite State Machine
+   (FSM) for the touch controller. The controller and the processor
+   communicate using a specific protocol that the FSM implements */</font>
+<strong>struct</strong> <font color="#2040a0">n_touch</font> <font color="4444FF"><strong>{</strong></font>
+    <strong>int</strong> <font color="#2040a0">current_state</font><font color="4444FF">;</font>      <font color="#444444">/* Finite State Machine */</font>
+    <font color="#2040a0">spinlock_t</font> <font color="#2040a0">touch_lock</font><font color="4444FF">;</font>  <font color="#444444">/* Spinlock */</font>
+    <strong>struct</strong> <font color="#2040a0">tty_struct</font> <font color="4444FF">*</font><font color="#2040a0">tty</font><font color="4444FF">;</font> <font color="#444444">/* Associated tty */</font>
+    <font color="#444444">/* Statistics and other housekeeping */</font>
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font> <font color="4444FF">*</font><font color="#2040a0">n_tch</font><font color="4444FF">;</font>
+
+<font color="#444444">/* Device open() */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">n_touch_open</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">tty_struct</font> <font color="4444FF">*</font><font color="#2040a0">tty</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* Allocate memory for n_tch */</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">!</font><font color="4444FF">(</font><font color="#2040a0">n_tch</font> <font color="4444FF">=</font> <font color="#2040a0">kmalloc</font><font color="4444FF">(</font><strong>sizeof</strong><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">n_touch</font><font color="4444FF">)</font>, <font color="#2040a0">GFP_KERNEL</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <strong>return</strong> <font color="4444FF">-</font><font color="#2040a0">ENOMEM</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+    <font color="#2040a0">memset</font><font color="4444FF">(</font><font color="#2040a0">n_tch</font>, <font color="#FF0000">0</font>, <strong>sizeof</strong><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">n_touch</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">tty</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">disc_data</font> <font color="4444FF">=</font> <font color="#2040a0">n_tch</font><font color="4444FF">;</font> <font color="#444444">/* Other entry points now
+                               have direct access to n_tch */</font>
+
+    <font color="#444444">/* Allocate the line discipline's local read buffer
+       used for copying data out of the tty flip buffer */</font>
+    <font color="#2040a0">tty</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">read_buf</font> <font color="4444FF">=</font> <font color="#2040a0">kmalloc</font><font color="4444FF">(</font><font color="#2040a0">BUFFER_SIZE</font>, <font color="#2040a0">GFP_KERNEL</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">!</font><font color="#2040a0">tty</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">read_buf</font><font color="4444FF">)</font> <strong>return</strong> <font color="4444FF">-</font><font color="#2040a0">ENOMEM</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Clear the read buffer */</font>
+    <font color="#2040a0">memset</font><font color="4444FF">(</font><font color="#2040a0">tty</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">read_buf</font>, <font color="#FF0000">0</font>, <font color="#2040a0">BUFFER_SIZE</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Initialize lock */</font>
+    <font color="#2040a0">spin_lock_init</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">ntch</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">touch_lock</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Initialize other necessary tty fields.
+       See drivers/char/n_tty.c for an example */</font>
+
+    <font color="#444444">/* ... */</font>
+
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font> 
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

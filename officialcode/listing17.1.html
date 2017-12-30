@@ -1,0 +1,42 @@
+<html>
+<head>
+  <title>Listing 17.1</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="0000ff"><strong>#define FLASH_START 0x00000000</strong></font>
+<font color="0000ff"><strong>#define MY_KERNEL_START 0x00080000   <font color="#444444"> /* 512K for bootloader */</font></strong></font>
+<font color="0000ff"><strong>#define MY_FS_START 0x00280000       <font color="#444444"> /* 2MB for kernel */</font></strong></font>
+<font color="0000ff"><strong>#define FLASH_END 0x02000000         <font color="#444444"> /* 32MB */</font></strong></font>
+
+<strong>static</strong> <strong>struct</strong> <font color="#2040a0">mtd_partition</font> <font color="#2040a0">pda_partitions</font><font color="4444FF">[</font><font color="4444FF">]</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font>
+    <font color="4444FF"><strong>{</strong></font>
+        .<font color="#2040a0">name</font> <font color="4444FF">=</font> <font color="#008000">&quot;pda_btldr&quot;</font>,          <font color="#444444">/* This string is used by
+                                         /proc/mtd to identify
+                                         the bootloader partition */</font>
+        .<font color="#2040a0">size</font><font color="4444FF">:</font> <font color="4444FF">=</font> <font color="4444FF">(</font><font color="#2040a0">MY_KERNEL_START</font><font color="4444FF">-</font><font color="#2040a0">FLASH_START</font><font color="4444FF">)</font>,
+        .<font color="#2040a0">offset</font> <font color="4444FF">=</font> <font color="#2040a0">FLASH_START</font>,        <font color="#444444">/* Start from top of flash */</font>
+        .<font color="#2040a0">mask_flags</font> <font color="4444FF">=</font> <font color="#2040a0">MTD_WRITEABLE</font>   <font color="#444444">/* Read-only partition */</font>
+    <font color="4444FF"><strong>}</strong></font>,
+    <font color="4444FF"><strong>{</strong></font>
+        .<font color="#2040a0">name</font> <font color="4444FF">=</font> <font color="#008000">&quot;pda_krnl&quot;</font>,           <font color="#444444">/* Kernel partition */</font>
+        .<font color="#2040a0">size</font><font color="4444FF">:</font> <font color="4444FF">=</font> <font color="4444FF">(</font><font color="#2040a0">MY_FS_START</font><font color="4444FF">-</font><font color="#2040a0">MY_KERNEL_START</font><font color="4444FF">)</font>,
+        .<font color="#2040a0">offset</font> <font color="4444FF">=</font> <font color="#2040a0">MTDPART_OFS_APPEND</font>, <font color="#444444">/* Start immediately after
+                                         the bootloader partition */</font>
+        .<font color="#2040a0">mask_flags</font> <font color="4444FF">=</font> <font color="#2040a0">MTD_WRITEABLE</font>   <font color="#444444">/* Read-only partition */</font>
+    <font color="4444FF"><strong>}</strong></font>,
+    <font color="4444FF"><strong>{</strong></font>
+        .<font color="#2040a0">name</font><font color="4444FF">:</font> <font color="4444FF">=</font> <font color="#008000">&quot;pda_fs&quot;</font>,            <font color="#444444">/* Filesystem partition */</font>
+        .<font color="#2040a0">size</font><font color="4444FF">:</font> <font color="4444FF">=</font> <font color="#2040a0">MTDPART_SIZ_FULL</font>,    <font color="#444444">/* Use up the rest of the
+                                         flash */</font>
+        .<font color="#2040a0">offset</font> <font color="4444FF">=</font> <font color="#2040a0">MTDPART_OFS_NEXTBLK</font>,<font color="#444444">/* Align this partition with
+                                         the erase size */</font>
+    <font color="4444FF"><strong>}</strong></font>
+<font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

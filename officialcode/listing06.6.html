@@ -1,0 +1,20 @@
+<html>
+<head>
+  <title>Listing 6.6</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+    <font color="#2040a0">fd</font> <font color="4444FF">=</font> <font color="#2040a0">open</font><font color="4444FF">(</font><font color="#008000">&quot;/dev/ttySX&quot;</font>, <font color="#2040a0">O_RDONLY</font> <font color="4444FF">|</font> <font color="#2040a0">O_NOCTTY</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#444444">/* At this point, N_TCH is attached to /dev/ttySX, the serial port used
+       by the touch controller. Switch to N_TTY */</font>
+    <font color="#2040a0">ldisc</font> <font color="4444FF">=</font> <font color="#2040a0">N_TTY</font><font color="4444FF">;</font>
+    <font color="#2040a0">ioctl</font><font color="4444FF">(</font><font color="#2040a0">fd</font>, <font color="#2040a0">TIOCSETD</font>, <font color="4444FF">&amp;</font><font color="#2040a0">ldisc</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#444444">/* Set termios to raw mode and dump the data coming in */</font>
+    <font color="#444444">/* ... */</font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

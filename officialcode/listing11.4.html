@@ -1,0 +1,108 @@
+<html>
+<head>
+  <title>Listing 11.4</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="#444444">/* Offset of the Telemetry configuration register
+   within the on-card register space */</font>
+<font color="0000ff"><strong>#define TELEMETRY_CONFIG_REG_OFFSET 0x0A</strong></font>
+
+<font color="#444444">/* Value to program in the configuration register */</font>
+<font color="0000ff"><strong>#define TELEMETRY_CONFIG_REG_VALUE 0xBC</strong></font>
+
+<font color="#444444">/* The vendor-defined bRequest for programming the
+   configuration register */</font>
+<font color="0000ff"><strong>#define TELEMETRY_REQUEST_WRITE 0x0D</strong></font>
+
+<font color="#444444">/* The vendor-defined bRequestType */</font>
+<font color="0000ff"><strong>#define TELEMETRY_REQUEST_WRITE_REGISTER 0x0E</strong></font>
+
+<font color="#444444">/* Open method */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">tele_open</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">inode</font> <font color="4444FF">*</font><font color="#2040a0">inode</font>, <strong>struct</strong> <font color="#2040a0">file</font> <font color="4444FF">*</font><font color="#2040a0">file</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>struct</strong> <font color="#2040a0">completion</font> <font color="#2040a0">tele_config_done</font><font color="4444FF">;</font>
+    <font color="#2040a0">tele_device_t</font> <font color="4444FF">*</font><font color="#2040a0">tele_device</font><font color="4444FF">;</font>
+    <strong>void</strong> <font color="4444FF">*</font><font color="#2040a0">tele_ctrl_context</font><font color="4444FF">;</font>
+    <strong>char</strong> <font color="4444FF">*</font><font color="#2040a0">tmp</font><font color="4444FF">;</font>
+    <font color="#2040a0">__le16</font> <font color="#2040a0">tele_config_index</font> <font color="4444FF">=</font> <font color="#2040a0">TELEMETRY_CONFIG_REG_OFFSET</font><font color="4444FF">;</font>    
+    <strong>unsigned</strong> <strong>int</strong> <font color="#2040a0">tele_ctrl_pipe</font><font color="4444FF">;</font>
+    <strong>struct</strong> <font color="#2040a0">usb_interface</font> <font color="4444FF">*</font><font color="#2040a0">interface</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Obtain the pointer to the device-specific structure.
+       We saved it using usb_set_intfdata() in tele_probe() */</font>
+    <font color="#2040a0">interface</font> <font color="4444FF">=</font> <font color="#2040a0">usb_find_interface</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">tele_driver</font>, <font color="#2040a0">iminor</font><font color="4444FF">(</font><font color="#2040a0">inode</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">tele_device</font> <font color="4444FF">=</font> <font color="#2040a0">usb_get_intfdata</font><font color="4444FF">(</font><font color="#2040a0">interface</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Allocate a URB for the control transfer */</font>
+    <font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">ctrl_urb</font> <font color="4444FF">=</font> <font color="#2040a0">usb_alloc_urb</font><font color="4444FF">(</font><font color="#FF0000">0</font>, <font color="#2040a0">GFP_KERNEL</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">!</font><font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">ctrl_urb</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <strong>return</strong> <font color="4444FF">-</font><font color="#2040a0">EIO</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#444444">/* Populate the Control Request */</font>
+    <font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">ctrl_req</font>.<font color="#2040a0">bRequestType</font> <font color="4444FF">=</font> <font color="#2040a0">TELEMETRY_REQUEST_WRITE</font><font color="4444FF">;</font>
+    <font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">ctrl_req</font>.<font color="#2040a0">bRequest</font> <font color="4444FF">=</font>
+        <font color="#2040a0">TELEMETRY_REQUEST_WRITE_REGISTER</font><font color="4444FF">;</font>
+    <font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">ctrl_req</font>.<font color="#2040a0">wValue</font> <font color="4444FF">=</font>
+        <font color="#2040a0">cpu_to_le16</font><font color="4444FF">(</font><font color="#2040a0">TELEMETRY_CONFIG_REG_VALUE</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">ctrl_req</font>.<font color="#2040a0">wIndex</font> <font color="4444FF">=</font>
+        <font color="#2040a0">cpu_to_le16p</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">tele_config_index</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">ctrl_req</font>.<font color="#2040a0">wLength</font> <font color="4444FF">=</font> <font color="#2040a0">cpu_to_le16</font><font color="4444FF">(</font><font color="#FF0000">1</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">ctrl_urb</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">transfer_buffer_length</font> <font color="4444FF">=</font> <font color="#FF0000">1</font><font color="4444FF">;</font>
+    <font color="#2040a0">tmp</font> <font color="4444FF">=</font> <font color="#2040a0">kmalloc</font><font color="4444FF">(</font><font color="#FF0000">1</font>, <font color="#2040a0">GFP_KERNEL</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="4444FF">*</font><font color="#2040a0">tmp</font> <font color="4444FF">=</font> <font color="#2040a0">TELEMETRY_CONFIG_REG_VALUE</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Create a control pipe attached to endpoint 0 */</font>
+    <font color="#2040a0">tele_ctrl_pipe</font> <font color="4444FF">=</font> <font color="#2040a0">usb_sndctrlpipe</font><font color="4444FF">(</font><font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">usbdev</font>, <font color="#FF0000">0</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Initialize the completion mechanism */</font>
+    <font color="#2040a0">init_completion</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">tele_config_done</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Set URB context. The context is part of the URB that is passed
+       to the callback function as an argument. In this case, the
+       context is the completion structure, tele_config_done */</font>
+    <font color="#2040a0">tele_ctrl_context</font> <font color="4444FF">=</font> <font color="4444FF">(</font><strong>void</strong> <font color="4444FF">*</font><font color="4444FF">)</font><font color="4444FF">&amp;</font><font color="#2040a0">tele_config_done</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Initialize the fields in the control URB */</font>
+    <font color="#2040a0">usb_fill_control_urb</font><font color="4444FF">(</font><font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">ctrl_urb</font>, <font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">usbdev</font>,
+                         <font color="#2040a0">tele_ctrl_pipe</font>,
+                         <font color="4444FF">(</font><strong>char</strong> <font color="4444FF">*</font><font color="4444FF">)</font> <font color="4444FF">&amp;</font><font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">ctrl_req</font>,
+                         <font color="#2040a0">tmp</font>, <font color="#FF0000">1</font>, <font color="#2040a0">tele_ctrl_callback</font>,
+                         <font color="#2040a0">tele_ctrl_context</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    
+
+    <font color="#444444">/* Submit the URB */</font>
+    <font color="#2040a0">usb_submit_urb</font><font color="4444FF">(</font><font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">ctrl_urb</font>, <font color="#2040a0">GFP_ATOMIC</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Wait until the callback returns indicating that the telemetry
+       configuration register has been successfully initialized */</font>
+    <font color="#2040a0">wait_for_completion</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">tele_config_done</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Release our reference to the URB */</font>
+    <font color="#2040a0">usb_free_urb</font><font color="4444FF">(</font><font color="#2040a0">urb</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">kfree</font><font color="4444FF">(</font><font color="#2040a0">tmp</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Save the device-specific object to the file’s private_data
+       so that you can directly retrieve it from other entry points
+       such as tele_read() and tele_write() */</font>
+    <font color="#2040a0">file</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">private_data</font> <font color="4444FF">=</font> <font color="#2040a0">tele_device</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Return the URB transfer status */</font>
+    <strong>return</strong><font color="4444FF">(</font><font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">ctrl_urb</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">status</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Callback function */</font>
+<strong>static</strong> <strong>void</strong>
+<font color="#2040a0">tele_ctrl_callback</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">urb</font> <font color="4444FF">*</font><font color="#2040a0">urb</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#2040a0">complete</font><font color="4444FF">(</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">completion</font> <font color="4444FF">*</font><font color="4444FF">)</font><font color="#2040a0">urb</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">context</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

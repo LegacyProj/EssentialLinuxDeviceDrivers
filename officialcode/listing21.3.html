@@ -1,0 +1,85 @@
+<html>
+<head>
+  <title>Listing 21.3</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="0000ff"><strong>#include <font color="#008000">&lt;linux/kernel.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;linux/module.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;linux/kprobes.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;linux/kallsyms.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;linux/sched.h&gt;</font></strong></font>
+
+<strong>extern</strong> <strong>int</strong> <font color="#2040a0">npages</font><font color="4444FF">;</font> <font color="#444444">/* Defined in Listing 21.2 */</font>
+
+<font color="#444444">/* Per-probe structure */</font>
+<strong>static</strong> <strong>struct</strong> <font color="#2040a0">kprobe</font> <font color="#2040a0">bandaid</font><font color="4444FF">;</font>
+
+<font color="#444444">/* Pre Handler: Invoked before running probed instruction */</font>
+<strong>int</strong>
+<font color="#2040a0">bandaid_pre</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">kprobe</font> <font color="4444FF">*</font><font color="#2040a0">p</font>, <strong>struct</strong> <font color="#2040a0">pt_regs</font> <font color="4444FF">*</font><font color="#2040a0">regs</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">npages</font> <font color="4444FF">&gt;</font> <font color="#FF0000">10</font><font color="4444FF">)</font> <font color="#2040a0">npages</font> <font color="4444FF">=</font> <font color="#FF0000">10</font><font color="4444FF">;</font>
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Post Handler: Invoked after running probed instruction */</font>
+<strong>void</strong>
+<font color="#2040a0">bandaid_post</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">kprobe</font> <font color="4444FF">*</font><font color="#2040a0">p</font>, <strong>struct</strong> <font color="#2040a0">pt_regs</font> <font color="4444FF">*</font><font color="#2040a0">regs</font>,
+             <strong>unsigned</strong> <strong>long</strong> <font color="#2040a0">flags</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* Nothing to do */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Fault Handler: Invoked if the pre/post-handlers
+   encounter a fault */</font>
+<strong>int</strong>
+<font color="#2040a0">bandaid_fault</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">kprobe</font> <font color="4444FF">*</font><font color="#2040a0">p</font>, <strong>struct</strong> <font color="#2040a0">pt_regs</font> <font color="4444FF">*</font><font color="#2040a0">regs</font>,
+                  <strong>int</strong> <font color="#2040a0">trapnr</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<strong>int</strong>
+<font color="#2040a0">init_module</font><font color="4444FF">(</font><strong>void</strong><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>int</strong> <font color="#2040a0">retval</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Fill the kprobe structure */</font>
+    <font color="#2040a0">bandaid</font>.<font color="#2040a0">pre_handler</font> <font color="4444FF">=</font> <font color="#2040a0">bandaid_pre</font><font color="4444FF">;</font>
+    <font color="#2040a0">bandaid</font>.<font color="#2040a0">post_handler</font> <font color="4444FF">=</font> <font color="#2040a0">bandaid_post</font><font color="4444FF">;</font>
+    <font color="#2040a0">bandaid</font>.<font color="#2040a0">fault_handler</font> <font color="4444FF">=</font> <font color="#2040a0">bandaid_fault</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Arrive at the target address as explained */</font>
+    <font color="#2040a0">bandaid</font>.<font color="#2040a0">addr</font> <font color="4444FF">=</font> <font color="4444FF">(</font><font color="#2040a0">kprobe_opcode_t</font><font color="4444FF">*</font><font color="4444FF">)</font>
+        <font color="#2040a0">kallsyms_lookup_name</font><font color="4444FF">(</font><font color="#008000">&quot;memwalkd&quot;</font><font color="4444FF">)</font> <font color="4444FF">+</font> <font color="#FF0000">0xaa</font><font color="4444FF">;</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">!</font><font color="#2040a0">bandaid</font>.<font color="#2040a0">addr</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#2040a0">printk</font><font color="4444FF">(</font><font color="#008000">&quot;Bad Probe Point<font color="#77dd77">\n</font>&quot;</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <strong>return</strong> <font color="4444FF">-</font><font color="#FF0000">1</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#444444">/* Register the kprobe */</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">(</font><font color="#2040a0">retval</font> <font color="4444FF">=</font> <font color="#2040a0">register_kprobe</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">bandaid</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF">&lt;</font> <font color="#FF0000">0</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#2040a0">printk</font><font color="4444FF">(</font><font color="#008000">&quot;register_kprobe error, return value=%d<font color="#77dd77">\n</font>&quot;</font>,
+               <font color="#2040a0">retval</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <strong>return</strong> <font color="4444FF">-</font><font color="#FF0000">1</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<strong>void</strong>
+<font color="#2040a0">module_cleanup</font><font color="4444FF">(</font><strong>void</strong><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#2040a0">unregister_kprobe</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">bandaid</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#2040a0">MODULE_LICENSE</font><font color="4444FF">(</font><font color="#008000">&quot;GPL&quot;</font><font color="4444FF">)</font><font color="4444FF">;</font> <font color="#444444">/* You can't link the Kprobes API
+                          unless your user module is GPL'ed */</font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

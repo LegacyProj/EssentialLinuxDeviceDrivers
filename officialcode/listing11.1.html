@@ -1,0 +1,54 @@
+<html>
+<head>
+  <title>Listing 11.1</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="#444444">/* ... */</font>
+<font color="#444444">/* USB device */</font>
+<strong>struct</strong> <font color="#2040a0">usb_device</font> <font color="4444FF">*</font><font color="#2040a0">udevice</font><font color="4444FF">;</font>
+
+<font color="#444444">/* ... */</font>
+
+<strong>struct</strong> <font color="#2040a0">usb_device_descriptor</font> <font color="#2040a0">u_d_desc</font> <font color="4444FF">=</font> <font color="#2040a0">udevice</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">descriptor</font><font color="4444FF">;</font>
+
+<font color="#444444">/* Device's active configuration */</font>
+<strong>struct</strong> <font color="#2040a0">usb_host_config</font> <font color="4444FF">*</font><font color="#2040a0">uconfig</font><font color="4444FF">;</font>
+<strong>struct</strong> <font color="#2040a0">usb_config_desriptor</font> <font color="#2040a0">u_c_desc</font><font color="4444FF">;</font>
+
+<font color="#444444">/* Interfaces in the active configuration */</font>
+<strong>struct</strong> <font color="#2040a0">usb_interface</font> <font color="4444FF">*</font><font color="#2040a0">uinterface</font><font color="4444FF">;</font>
+
+<font color="#444444">/* Alternate Setting for this interface */</font>
+<strong>struct</strong> <font color="#2040a0">usb_host_interface</font> <font color="4444FF">*</font><font color="#2040a0">ualtsetting</font><font color="4444FF">;</font>
+<strong>struct</strong> <font color="#2040a0">usb_interface_descriptor</font> <font color="#2040a0">u_i_desc</font><font color="4444FF">;</font>
+
+<font color="#444444">/* Endpoints for this altsetting */</font>
+<strong>struct</strong> <font color="#2040a0">usb_host_endpoint</font> <font color="4444FF">*</font><font color="#2040a0">uendpoint</font><font color="4444FF">;</font>
+<strong>struct</strong> <font color="#2040a0">usb_endpoint_descriptor</font> <font color="#2040a0">u_e_desc</font><font color="4444FF">;</font>
+
+<font color="#2040a0">uconfig</font>  <font color="4444FF">=</font> <font color="#2040a0">udevice</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">actconfig</font><font color="4444FF">;</font>
+<font color="#2040a0">u_c_desc</font> <font color="4444FF">=</font> <font color="#2040a0">uconfig</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">desc</font><font color="4444FF">;</font>
+
+<strong>for</strong> <font color="4444FF">(</font><font color="#2040a0">i</font> <font color="4444FF">=</font> <font color="#FF0000">0</font><font color="4444FF">;</font> <font color="#2040a0">i</font> <font color="4444FF">&lt;</font> <font color="#2040a0">u_c_desc</font>.<font color="#2040a0">bNumInterfaces</font><font color="4444FF">;</font>
+     <font color="#2040a0">i</font><font color="4444FF">+</font><font color="4444FF">+</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+    <font color="#2040a0">uinterface</font> <font color="4444FF">=</font> <font color="#2040a0">udevice</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">actconfig</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">interface</font><font color="4444FF">[</font><font color="#2040a0">i</font><font color="4444FF">]</font><font color="4444FF">;</font>
+    <strong>for</strong> <font color="4444FF">(</font><font color="#2040a0">j</font> <font color="4444FF">=</font> <font color="#FF0000">0</font><font color="4444FF">;</font> <font color="#2040a0">j</font> <font color="4444FF">&lt;</font> <font color="#2040a0">uinterface</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">num_altsetting</font><font color="4444FF">;</font> <font color="#2040a0">j</font><font color="4444FF">+</font><font color="4444FF">+</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#2040a0">ualtsetting</font> <font color="4444FF">=</font> <font color="4444FF">&amp;</font><font color="#2040a0">uinterface</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">altsetting</font><font color="4444FF">[</font><font color="#2040a0">j</font><font color="4444FF">]</font><font color="4444FF">;</font>
+        <font color="#2040a0">u_i_desc</font> <font color="4444FF">=</font> <font color="#2040a0">ualtsetting</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">desc</font><font color="4444FF">;</font>
+        <strong>for</strong> <font color="4444FF">(</font><font color="#2040a0">k</font> <font color="4444FF">=</font> <font color="#FF0000">0</font><font color="4444FF">;</font> <font color="#2040a0">k</font> <font color="4444FF">&lt;</font> <font color="#2040a0">u_i_desc</font>.<font color="#2040a0">bNumEndpoints</font><font color="4444FF">;</font> <font color="#2040a0">k</font><font color="4444FF">+</font><font color="4444FF">+</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+            <font color="#2040a0">uendpoint</font> <font color="4444FF">=</font> <font color="4444FF">&amp;</font><font color="#2040a0">ualtsetting</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">endpoint</font><font color="4444FF">[</font><font color="#2040a0">k</font><font color="4444FF">]</font><font color="4444FF">;</font>
+            <font color="#2040a0">u_e_desc</font> <font color="4444FF">=</font> <font color="#2040a0">uendpoint</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">desc</font><font color="4444FF">;</font>
+            <font color="#2040a0">printk</font> <font color="4444FF">(</font><font color="#008000">&quot;Endpoint Address = %d<font color="#77dd77">\n</font>&quot;</font>,
+                    <font color="#2040a0">u_e_desc</font>.<font color="#2040a0">bEndpointAddress</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="4444FF"><strong>}</strong></font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#444444">/* ... */</font>      
+<font color="4444FF"><strong>}</strong></font>
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

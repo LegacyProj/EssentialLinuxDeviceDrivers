@@ -1,0 +1,59 @@
+<html>
+<head>
+  <title>Listing 6.4</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<strong>static</strong> <strong>void</strong>
+<font color="#2040a0">n_touch_receive_buf</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">tty_struct</font> <font color="4444FF">*</font><font color="#2040a0">tty</font>,
+                    <strong>const</strong> <strong>unsigned</strong> <strong>char</strong> <font color="4444FF">*</font><font color="#2040a0">cp</font>, <strong>char</strong> <font color="4444FF">*</font><font color="#2040a0">fp</font>, <strong>int</strong> <font color="#2040a0">count</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* Work on the data in the line discipline's half of
+       the flip buffer pointed to by cp */</font>
+    <font color="#444444">/* ... */</font>
+
+    <font color="#444444">/* Implement the Finite State Machine to interpret commands/data
+       arriving from the touch controller and put the processed data
+       into the local read buffer */</font>
+    <font color="#444444">/* Datasheet-dependent Code Region */</font>
+    <strong>switch</strong> <font color="4444FF">(</font><font color="#2040a0">tty</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">disc_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">current_state</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+    <strong>case</strong> <font color="#2040a0">RESET</font><font color="4444FF">:</font>
+        <font color="#444444">/* Issue a reset command to the controller */</font>
+        <font color="#2040a0">tty</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">driver</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">write</font><font color="4444FF">(</font><font color="#2040a0">tty</font>, <font color="#FF0000">0</font>, <font color="#2040a0">mode_stream_command</font>,
+                           <strong>sizeof</strong><font color="4444FF">(</font><font color="#2040a0">mode_stream_command</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#2040a0">tty</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">disc_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">current_state</font> <font color="4444FF">=</font> <font color="#2040a0">STREAM_DATA</font><font color="4444FF">;</font>
+        <font color="#444444">/* ... */</font>
+        <strong>break</strong><font color="4444FF">;</font>
+    <strong>case</strong> <font color="#2040a0">STREAM_DATA</font><font color="4444FF">:</font>
+        <font color="#444444">/* ... */</font>
+        <strong>break</strong><font color="4444FF">;</font>
+    <strong>case</strong> <font color="#2040a0">PARSING</font><font color="4444FF">:</font>
+        <font color="#444444">/* ... */</font>
+        <font color="#2040a0">tty</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">disc_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">current_state</font> <font color="4444FF">=</font> <font color="#2040a0">PARSED</font><font color="4444FF">;</font>
+        <strong>break</strong><font color="4444FF">;</font>
+    <strong>case</strong> <font color="#2040a0">PARSED</font><font color="4444FF">:</font>
+        <font color="#444444">/* ... */</font>
+    <font color="4444FF"><strong>}</strong></font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">tty</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">disc_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">current_state</font> <font color="4444FF">=</font><font color="4444FF">=</font> <font color="#2040a0">PARSED</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#444444">/* If you have a parsed packet, copy the collected coordinate
+           and direction information into the local read buffer */</font>
+        <font color="#2040a0">spin_lock_irqsave</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">tty</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">disc_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">touch_lock</font>, <font color="#2040a0">flags</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <strong>for</strong> <font color="4444FF">(</font><font color="#2040a0">i</font><font color="4444FF">=</font><font color="#FF0000">0</font><font color="4444FF">;</font> <font color="#2040a0">i</font> <font color="4444FF">&lt;</font> <font color="#2040a0">PACKET_SIZE</font><font color="4444FF">;</font> <font color="#2040a0">i</font><font color="4444FF">+</font><font color="4444FF">+</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+            <font color="#2040a0">tty</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">disc_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">read_buf</font><font color="4444FF">[</font><font color="#2040a0">tty</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">disc_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">read_head</font><font color="4444FF">]</font> <font color="4444FF">=</font>
+                <font color="#2040a0">tty</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">disc_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">current_pkt</font><font color="4444FF">[</font><font color="#2040a0">i</font><font color="4444FF">]</font><font color="4444FF">;</font>
+            <font color="#2040a0">tty</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">disc_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">read_head</font> <font color="4444FF">=</font>
+                <font color="4444FF">(</font><font color="#2040a0">tty</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">disc_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">read_head</font> <font color="4444FF">+</font> <font color="#FF0000">1</font><font color="4444FF">)</font> <font color="4444FF">&amp;</font> <font color="4444FF">(</font><font color="#2040a0">BUFFER_SIZE</font> <font color="4444FF">-</font> <font color="#FF0000">1</font><font color="4444FF">)</font><font color="4444FF">;</font>
+            <font color="#2040a0">tty</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">disc_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">read_cnt</font><font color="4444FF">+</font><font color="4444FF">+</font><font color="4444FF">;</font>
+        <font color="4444FF"><strong>}</strong></font>
+        <font color="#2040a0">spin_lock_irqrestore</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">tty</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">disc_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">touch_lock</font>, <font color="#2040a0">flags</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#444444">/* ... */</font> <font color="#444444">/* See Listing 6.5 */</font>
+    <font color="4444FF"><strong>}</strong></font>
+<font color="4444FF"><strong>}</strong></font>
+
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

@@ -1,0 +1,254 @@
+<html>
+<head>
+  <title>Listing 15.1</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="0000ff"><strong>#include <font color="#008000">&lt;linux/netdevice.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;linux/etherdevice.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;linux/skbuff.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;linux/ethtool.h&gt;</font></strong></font>
+
+<strong>struct</strong> <font color="#2040a0">net_device_stats</font> <font color="#2040a0">mycard_stats</font><font color="4444FF">;</font> <font color="#444444">/* Statistics */</font>
+
+<font color="#444444">/* Fill ethtool_ops methods from a suitable place in the driver */</font>
+<strong>struct</strong> <font color="#2040a0">ethtool_ops</font> <font color="#2040a0">mycard_ethtool_ops</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* ... */</font>
+    .<font color="#2040a0">get_eeprom</font> <font color="4444FF">=</font> <font color="#2040a0">mycard_get_eeprom</font>, <font color="#444444">/* Dump EEPROM contents */</font>
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+
+<font color="#444444">/* Initialize/probe the card. For PCI cards, this is invoked
+   from (or is itself) the probe() method. In that case, the
+   function is declared as:
+   static struct net_device *init_mycard(struct pci_dev *pdev, const
+   struct pci_device_id *id)
+*/</font>
+<strong>static</strong> <strong>struct</strong> <font color="#2040a0">net_device</font> <font color="4444FF">*</font>
+<font color="#2040a0">init_mycard</font><font color="4444FF">(</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>struct</strong> <font color="#2040a0">net_device</font> <font color="4444FF">*</font><font color="#2040a0">netdev</font><font color="4444FF">;</font>
+    <strong>struct</strong> <font color="#2040a0">priv_struct</font> <font color="#2040a0">mycard_priv</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* ... */</font>
+    <font color="#2040a0">netdev</font> <font color="4444FF">=</font> <font color="#2040a0">alloc_etherdev</font><font color="4444FF">(</font><strong>sizeof</strong><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">priv_struct</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Common methods */</font>
+    <font color="#2040a0">netdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">open</font> <font color="4444FF">=</font> <font color="4444FF">&amp;</font><font color="#2040a0">mycard_open</font><font color="4444FF">;</font>
+    <font color="#2040a0">netdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">stop</font> <font color="4444FF">=</font> <font color="4444FF">&amp;</font><font color="#2040a0">mycard_close</font><font color="4444FF">;</font>
+    <font color="#2040a0">netdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">do_ioctl</font> <font color="4444FF">=</font> <font color="4444FF">&amp;</font><font color="#2040a0">mycard_ioctl</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Data transfer */</font>
+    <font color="#2040a0">netdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">hard_start_xmit</font> <font color="4444FF">=</font> <font color="4444FF">&amp;</font><font color="#2040a0">mycard_xmit_frame</font><font color="4444FF">;</font> <font color="#444444">/* Transmit */</font>
+    <font color="#2040a0">netdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">poll</font> <font color="4444FF">=</font> <font color="4444FF">&amp;</font><font color="#2040a0">mycard_poll</font><font color="4444FF">;</font>                  <font color="#444444">/* Receive - NAPI */</font>
+    <font color="#2040a0">netdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">weight</font> <font color="4444FF">=</font> <font color="#FF0000">64</font><font color="4444FF">;</font>                          <font color="#444444">/* Fairness */</font>
+
+    <font color="#444444">/* Watchdog */</font>
+    <font color="#2040a0">netdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">tx_timeout</font> <font color="4444FF">=</font> <font color="4444FF">&amp;</font><font color="#2040a0">mycard_timeout</font><font color="4444FF">;</font> <font color="#444444">/* Recovery function */</font>
+    <font color="#2040a0">netdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">watchdog_timeo</font> <font color="4444FF">=</font> <font color="#FF0000">8</font><font color="4444FF">*</font><font color="#2040a0">HZ</font><font color="4444FF">;</font>        <font color="#444444">/* 8-second timeout */</font>
+
+    <font color="#444444">/* Statistics and configuration */</font>
+    <font color="#2040a0">netdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">get_stats</font> <font color="4444FF">=</font> <font color="4444FF">&amp;</font><font color="#2040a0">mycard_get_stats</font><font color="4444FF">;</font>     <font color="#444444">/* Statistics support */</font>
+    <font color="#2040a0">netdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">ethtool_ops</font> <font color="4444FF">=</font> <font color="4444FF">&amp;</font><font color="#2040a0">mycard_ethtool_ops</font><font color="4444FF">;</font> <font color="#444444">/* Ethtool support */</font>
+    <font color="#2040a0">netdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">set_mac_address</font> <font color="4444FF">=</font> <font color="4444FF">&amp;</font><font color="#2040a0">mycard_set_mac</font><font color="4444FF">;</font> <font color="#444444">/* Change MAC */</font>
+    <font color="#2040a0">netdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">change_mtu</font> <font color="4444FF">=</font> <font color="4444FF">&amp;</font><font color="#2040a0">mycard_change_mtu</font><font color="4444FF">;</font>   <font color="#444444">/* Alter MTU */</font>
+    <font color="#2040a0">strncpy</font><font color="4444FF">(</font><font color="#2040a0">netdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">name</font>, <font color="#2040a0">pci_name</font><font color="4444FF">(</font><font color="#2040a0">pdev</font><font color="4444FF">)</font>,
+            <strong>sizeof</strong><font color="4444FF">(</font><font color="#2040a0">netdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">name</font><font color="4444FF">)</font> <font color="4444FF">-</font> <font color="#FF0000">1</font><font color="4444FF">)</font><font color="4444FF">;</font>         <font color="#444444">/* Name (for PCI) */</font>
+
+    <font color="#444444">/* Bus-specific parameters. For a PCI NIC, it looks as follows */</font>
+    <font color="#2040a0">netdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">mem_start</font> <font color="4444FF">=</font> <font color="#2040a0">pci_resource_start</font><font color="4444FF">(</font><font color="#2040a0">pdev</font>, <font color="#FF0000">0</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">netdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">mem_end</font> <font color="4444FF">=</font> <font color="#2040a0">netdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">mem_start</font> <font color="4444FF">+</font> <font color="#2040a0">pci_resource_len</font><font color="4444FF">(</font><font color="#2040a0">pdev</font>, <font color="#FF0000">0</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Register the interface */</font>
+    <font color="#2040a0">register_netdev</font><font color="4444FF">(</font><font color="#2040a0">netdev</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* ... */</font>
+
+    <font color="#444444">/* Get MAC address from attached EEPROM */</font>
+    <font color="#444444">/* ... */</font>
+
+    <font color="#444444">/* Download microcode if needed */</font>
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* The interrupt handler */</font>
+<strong>static</strong> <font color="#2040a0">irqreturn_t</font>
+<font color="#2040a0">mycard_interrupt</font><font color="4444FF">(</font><strong>int</strong> <font color="#2040a0">irq</font>, <strong>void</strong> <font color="4444FF">*</font><font color="#2040a0">dev_id</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>struct</strong> <font color="#2040a0">net_device</font> <font color="4444FF">*</font><font color="#2040a0">netdev</font> <font color="4444FF">=</font> <font color="#2040a0">dev_id</font><font color="4444FF">;</font>
+    <strong>struct</strong> <font color="#2040a0">sk_buff</font> <font color="4444FF">*</font><font color="#2040a0">skb</font><font color="4444FF">;</font>
+    <strong>unsigned</strong> <strong>int</strong> <font color="#2040a0">length</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* ... */</font>
+
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">receive_interrupt</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#444444">/* We were interrupted due to packet reception. At this point,
+           the NIC has already DMA'ed received data to an sk_buff that
+           was pre-allocated and mapped during device open. Obtain the
+           address of the sk_buff depending on your data structure
+           design and assign it to 'skb'. 'length' is similarly obtained
+           from the NIC by reading the descriptor used to DMA data from
+           the card. Now, skb-&gt;data contains the received data. */</font>
+        <font color="#444444">/* ... */</font>
+
+        <font color="#444444">/* For PCI cards, perform a pci_unmap_single() on the
+           received buffer in order to allow the CPU to access it */</font>
+        <font color="#444444">/* ... */</font>
+
+        <font color="#444444">/* Allow the data go to the tail of the packet by moving
+           skb-&gt;tail down by length bytes and increasing
+           skb-&gt;len correspondingly */</font>
+        <font color="#2040a0">skb_put</font><font color="4444FF">(</font><font color="#2040a0">skb</font>, <font color="#2040a0">length</font><font color="4444FF">)</font>
+            <font color="#444444">/* Pass the packet to the TCP/IP stack */</font>
+<font color="0000ff"><strong>#if !defined (USE_NAPI)<font color="#444444"> /* Do it the old way */</font></strong></font>
+            <font color="#2040a0">netif_rx</font><font color="4444FF">(</font><font color="#2040a0">skb</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="0000ff"><strong>#else<font color="#444444"> /* Do it the NAPI way */</font></strong></font>
+        <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">netif_rx_schedule_prep</font><font color="4444FF">(</font><font color="#2040a0">netdev</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+            <font color="#444444">/* Disable NIC interrupt. Implementation not shown. */</font>
+            <font color="#2040a0">disable_nic_interrupt</font><font color="4444FF">(</font><font color="4444FF">)</font><font color="4444FF">;</font>
+            <font color="#444444">/* Post the packet to the protocol layer and
+               add the device to the poll list */</font>
+            <font color="#2040a0">__netif_rx_schedule</font><font color="4444FF">(</font><font color="#2040a0">netdev</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="4444FF"><strong>}</strong></font>
+<font color="0000ff"><strong>#endif</strong></font>
+    <font color="4444FF"><strong>}</strong></font> <strong>else</strong> <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">tx_complete_interrupt</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#444444">/* Transmit Complete Interrupt */</font>
+        <font color="#444444">/* ... */</font>
+        <font color="#444444">/* Unmap and free transmit resources such as
+           DMA descriptors and buffers. Free sk_buffs or
+           reclaim them into a free pool */</font>
+        <font color="#444444">/* ... */</font>
+    <font color="4444FF"><strong>}</strong></font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Driver open */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">mycard_open</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">net_device</font> <font color="4444FF">*</font><font color="#2040a0">netdev</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* ... */</font>
+
+    <font color="#444444">/* Request irq */</font>
+    <font color="#2040a0">request_irq</font><font color="4444FF">(</font><font color="#2040a0">irq</font>, <font color="#2040a0">mycard_interrupt</font>, <font color="#2040a0">IRQF_SHARED</font>,
+                <font color="#2040a0">netdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">name</font>, <font color="#2040a0">dev</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Allocate Descriptor rings */</font>
+    <font color="#444444">/* See the section,
+       &quot;Buffer Management and Concurrency Control&quot; */</font>
+    <font color="#444444">/* ... */</font>
+
+    <font color="#444444">/* Provide free descriptor addresses to the card */</font>
+    <font color="#444444">/* ... */</font>
+
+    <font color="#444444">/* Convey your readiness to accept data from the
+       networking stack */</font>
+    <font color="#2040a0">netif_start_queue</font><font color="4444FF">(</font><font color="#2040a0">netdev</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Driver close */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">mycard_close</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">net_device</font> <font color="4444FF">*</font><font color="#2040a0">netdev</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* ... */</font>
+
+    <font color="#444444">/* Ask the networking stack to stop sending down data */</font>
+    <font color="#2040a0">netif_stop_queue</font><font color="4444FF">(</font><font color="#2040a0">netdev</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Called when the device is unplugged or when the module is
+   released. For PCI cards, this is invoked from (or is itself)
+   the remove() method. In that case, the function is declared as:
+   static void __devexit mycard_remove(struct pci_dev *pdev)
+*/</font>
+<strong>static</strong> <strong>void</strong> <font color="#2040a0">__devexit</font>
+<font color="#2040a0">mycard_remove</font><font color="4444FF">(</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>struct</strong> <font color="#2040a0">net_device</font> <font color="4444FF">*</font><font color="#2040a0">netdev</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* ... */</font>
+
+    <font color="#444444">/* For a PCI card, obtain the associated netdev as follows,
+       assuming that the probe() method performed a corresponding
+       pci_set_drvdata(pdev, netdev) after allocating the netdev */</font>
+    <font color="#2040a0">netdev</font> <font color="4444FF">=</font> <font color="#2040a0">pci_get_drvdata</font><font color="4444FF">(</font><font color="#2040a0">pdev</font><font color="4444FF">)</font><font color="4444FF">;</font> 
+    <font color="#2040a0">unregister_netdev</font><font color="4444FF">(</font><font color="#2040a0">netdev</font><font color="4444FF">)</font><font color="4444FF">;</font> <font color="#444444">/* Reverse of register_netdev() */</font>
+    <font color="#444444">/* ... */</font>
+    <font color="#2040a0">free_netdev</font><font color="4444FF">(</font><font color="#2040a0">netdev</font><font color="4444FF">)</font><font color="4444FF">;</font>       <font color="#444444">/* Reverse of alloc_netdev() */</font>
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Suspend method. For PCI devices, this is part of
+   the pci_driver structure discussed in Chapter 10 */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">mycard_suspend</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">pci_dev</font> <font color="4444FF">*</font><font color="#2040a0">pdev</font>, <font color="#2040a0">pm_message_t</font> <font color="#2040a0">state</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* ... */</font>
+    <font color="#2040a0">netif_device_detach</font><font color="4444FF">(</font><font color="#2040a0">netdev</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Resume method. For PCI devices, this is part of
+   the pci_driver structure discussed in Chapter 10 */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">mycard_resume</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">pci_dev</font> <font color="4444FF">*</font><font color="#2040a0">pdev</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* ... */</font>
+    <font color="#2040a0">netif_device_attach</font><font color="4444FF">(</font><font color="#2040a0">netdev</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Get statistics */</font>
+<strong>static</strong> <strong>struct</strong> <font color="#2040a0">net_device_stats</font> <font color="4444FF">*</font>
+<font color="#2040a0">mycard_get_stats</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">net_device</font> <font color="4444FF">*</font><font color="#2040a0">netdev</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* House keeping */</font>
+    <font color="#444444">/* ... */</font>
+    <strong>return</strong><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">mycard_stats</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Dump EEPROM contents. This is an ethtool_ops operation */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">mycard_get_eeprom</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">net_device</font> <font color="4444FF">*</font><font color="#2040a0">netdev</font>,
+                  <strong>struct</strong> <font color="#2040a0">ethtool_eeprom</font> <font color="4444FF">*</font><font color="#2040a0">eeprom</font>, <font color="#2040a0">uint8_t</font> <font color="4444FF">*</font><font color="#2040a0">bytes</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* Read data from the accompanying EEPROM */</font>
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Poll method */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">mycard_poll</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">net_device</font> <font color="4444FF">*</font><font color="#2040a0">netdev</font>, <strong>int</strong> <font color="4444FF">*</font><font color="#2040a0">budget</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* Post packets to the protocol layer using
+       netif_receive_skb() */</font>
+    <font color="#444444">/* ... */</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">no_more_ingress_packets</font><font color="4444FF">(</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF"><strong>{</strong></font>
+        <font color="#444444">/* Remove the device from the polled list */</font>
+        <font color="#2040a0">netif_rx_complete</font><font color="4444FF">(</font><font color="#2040a0">netdev</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+        <font color="#444444">/* Fall back to interrupt mode. Implementation not shown */</font>
+        <font color="#2040a0">enable_nic_interrupt</font><font color="4444FF">(</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Transmit method */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">mycard_xmit_frame</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">sk_buff</font> <font color="4444FF">*</font><font color="#2040a0">skb</font>, <strong>struct</strong> <font color="#2040a0">net_device</font> <font color="4444FF">*</font><font color="#2040a0">netdev</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* DMA the transmit packet from the associated sk_buff
+       to card memory */</font>
+    <font color="#444444">/* ... */</font>
+    <font color="#444444">/* Manage buffers */</font>
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

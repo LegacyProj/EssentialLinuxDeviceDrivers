@@ -1,0 +1,99 @@
+<html>
+<head>
+  <title>Listing 7.4</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="#444444">/* drivers/input/mouse/psmouse-base.c: */</font>
+
+<font color="#444444">/* List of supported PS/2 mouse protocols */</font>
+<strong>static</strong> <strong>struct</strong> <font color="#2040a0">psmouse_protocol</font> <font color="#2040a0">psmouse_protocols</font><font color="4444FF">[</font><font color="4444FF">]</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font>
+    <font color="4444FF"><strong>{</strong></font>
+        .<font color="#2040a0">type</font> <font color="4444FF">=</font> <font color="#2040a0">PSMOUSE_PS2</font>, <font color="#444444">/* The bare PS/2 handler */</font>
+        .<font color="#2040a0">name</font> <font color="4444FF">=</font> <font color="#008000">&quot;PS/2&quot;</font>,
+        .<font color="#2040a0">alias</font> <font color="4444FF">=</font> <font color="#008000">&quot;bare&quot;</font>,
+        .<font color="#2040a0">maxproto</font> <font color="4444FF">=</font> <font color="#FF0000">1</font>,
+        .<font color="#2040a0">detect</font> <font color="4444FF">=</font> <font color="#2040a0">ps2bare_detect</font>,
+    <font color="4444FF"><strong>}</strong></font>,
+    <font color="#444444">/* ... */</font>
+    <font color="4444FF"><strong>{</strong></font>
+        .<font color="#2040a0">type</font> <font color="4444FF">=</font> <font color="#2040a0">PSMOUSE_SYNAPTICS</font>,  <font color="#444444">/* Synaptics TouchPad Protocol */</font>
+        .<font color="#2040a0">name</font> <font color="4444FF">=</font> <font color="#008000">&quot;SynPS/2&quot;</font>,
+        .<font color="#2040a0">alias</font> <font color="4444FF">=</font> <font color="#008000">&quot;synaptics&quot;</font>,
+        .<font color="#2040a0">detect</font> <font color="4444FF">=</font> <font color="#2040a0">synaptics_detect</font>, <font color="#444444">/* Is the protocol detected? */</font>
+        .<font color="#2040a0">init</font> <font color="4444FF">=</font> <font color="#2040a0">synaptics_init</font>,     <font color="#444444">/* Initialize Protocol Handler */</font>
+    <font color="4444FF"><strong>}</strong></font>,
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* drivers/input/mouse/psmouse.h: */</font>
+
+<font color="#444444">/* The structure that ties various mouse protocols together */</font>
+<strong>struct</strong> <font color="#2040a0">psmouse</font> <font color="4444FF"><strong>{</strong></font>
+    <strong>struct</strong> <font color="#2040a0">input_dev</font> <font color="4444FF">*</font><font color="#2040a0">dev</font><font color="4444FF">;</font> <font color="#444444">/* The input device */</font>
+
+    <font color="#444444">/* ... */</font>
+
+    <font color="#444444">/* Protocol Methods */</font>
+    <font color="#2040a0">psmouse_ret_t</font> <font color="4444FF">(</font><font color="4444FF">*</font><font color="#2040a0">protocol_handler</font><font color="4444FF">)</font>
+        <font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">psmouse</font> <font color="4444FF">*</font><font color="#2040a0">psmouse</font>, <strong>struct</strong> <font color="#2040a0">pt_regs</font> <font color="4444FF">*</font><font color="#2040a0">regs</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>void</strong> <font color="4444FF">(</font><font color="4444FF">*</font><font color="#2040a0">set_rate</font><font color="4444FF">)</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">psmouse</font> <font color="4444FF">*</font><font color="#2040a0">psmouse</font>, <strong>unsigned</strong> <strong>int</strong> <font color="#2040a0">rate</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>void</strong> <font color="4444FF">(</font><font color="4444FF">*</font><font color="#2040a0">set_resolution</font><font color="4444FF">)</font>
+        <font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">psmouse</font> <font color="4444FF">*</font><font color="#2040a0">psmouse</font>, <strong>unsigned</strong> <strong>int</strong> <font color="#2040a0">resolution</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>int</strong> <font color="4444FF">(</font><font color="4444FF">*</font><font color="#2040a0">reconnect</font><font color="4444FF">)</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">psmouse</font> <font color="4444FF">*</font><font color="#2040a0">psmouse</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>void</strong> <font color="4444FF">(</font><font color="4444FF">*</font><font color="#2040a0">disconnect</font><font color="4444FF">)</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">psmouse</font> <font color="4444FF">*</font><font color="#2040a0">psmouse</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+
+<font color="#444444">/* drivers/input/mouse/synaptics.c:*/</font>
+<font color="#444444">/* init() method of the Synaptics protocol */</font>
+<strong>int</strong> <font color="#2040a0">synaptics_init</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">psmouse</font> <font color="4444FF">*</font><font color="#2040a0">psmouse</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>struct</strong> <font color="#2040a0">synaptics_data</font> <font color="4444FF">*</font><font color="#2040a0">priv</font><font color="4444FF">;</font>
+    <font color="#2040a0">psmouse</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">private</font> <font color="4444FF">=</font> <font color="#2040a0">priv</font> <font color="4444FF">=</font> <font color="#2040a0">kmalloc</font><font color="4444FF">(</font><strong>sizeof</strong><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">synaptics_data</font><font color="4444FF">)</font>,
+                                      <font color="#2040a0">GFP_KERNEL</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#444444">/* ... */</font>
+    <font color="#444444">/* This is called in interrupt context when mouse
+       movement is sensed */</font>
+    <font color="#2040a0">psmouse</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">protocol_handler</font> <font color="4444FF">=</font> <font color="#2040a0">synaptics_process_byte</font><font color="4444FF">;</font>
+    <font color="#444444">/* More protocol methods */</font>
+    <font color="#2040a0">psmouse</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">set_rate</font> <font color="4444FF">=</font> <font color="#2040a0">synaptics_set_rate</font><font color="4444FF">;</font>
+    <font color="#2040a0">psmouse</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">disconnect</font> <font color="4444FF">=</font> <font color="#2040a0">synaptics_disconnect</font><font color="4444FF">;</font>
+    <font color="#2040a0">psmouse</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">reconnect</font> <font color="4444FF">=</font> <font color="#2040a0">synaptics_reconnect</font><font color="4444FF">;</font>
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* drivers/input/mouse/synaptics.c: */</font>
+<font color="#444444">/* If you unfold synaptics_process_byte() and look at
+   synaptics_process_packet(), you can see the input
+   events being reported to user applications via mousedev */</font>
+<strong>static</strong> <strong>void</strong> <font color="#2040a0">synaptics_process_packet</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">psmouse</font> <font color="4444FF">*</font><font color="#2040a0">psmouse</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* ... */</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">hw</font>.<font color="#2040a0">z</font> <font color="4444FF">&gt;</font> <font color="#FF0000">0</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#444444">/* Absolute X Coordinate */</font>
+        <font color="#2040a0">input_report_abs</font><font color="4444FF">(</font><font color="#2040a0">dev</font>, <font color="#2040a0">ABS_X</font>, <font color="#2040a0">hw</font>.<font color="#2040a0">x</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#444444">/* Absolute Y Coordinate */</font>
+        <font color="#2040a0">input_report_abs</font><font color="4444FF">(</font><font color="#2040a0">dev</font>, <font color="#2040a0">ABS_Y</font>,
+                         <font color="#2040a0">YMAX_NOMINAL</font> <font color="4444FF">+</font> <font color="#2040a0">YMIN_NOMINAL</font> <font color="4444FF">-</font> <font color="#2040a0">hw</font>.<font color="#2040a0">y</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#444444">/* Absolute Z Coordinate */</font>
+    <font color="#2040a0">input_report_abs</font><font color="4444FF">(</font><font color="#2040a0">dev</font>, <font color="#2040a0">ABS_PRESSURE</font>, <font color="#2040a0">hw</font>.<font color="#2040a0">z</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#444444">/* ... */</font>
+
+    <font color="#444444">/* Left TouchPad button */</font>
+    <font color="#2040a0">input_report_key</font><font color="4444FF">(</font><font color="#2040a0">dev</font>, <font color="#2040a0">BTN_LEFT</font>, <font color="#2040a0">hw</font>.<font color="#2040a0">left</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Right TouchPad button */</font>
+    <font color="#2040a0">input_report_key</font><font color="4444FF">(</font><font color="#2040a0">dev</font>, <font color="#2040a0">BTN_RIGHT</font>, <font color="#2040a0">hw</font>.<font color="#2040a0">right</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font> 
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

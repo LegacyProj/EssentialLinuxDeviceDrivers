@@ -1,0 +1,99 @@
+<html>
+<head>
+  <title>Listing 16.3</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="0000ff"><strong>#include <font color="#008000">&lt;net/iw_handler.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;linux/wireless.h&gt;</font></strong></font>
+
+<font color="#444444">/* Populate the iw_handler_def structure with the location and number
+   of standard and private handlers, argument details of private
+   handlers, and location of get_wireless_stats() */</font>
+<strong>static</strong> <strong>struct</strong> <font color="#2040a0">iw_handler_def</font> <font color="#2040a0">mywifi_handler_def</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font>
+    .<font color="#2040a0">standard</font> <font color="4444FF">=</font> <font color="#2040a0">mywifi_std_handlers</font>,
+    .<font color="#2040a0">num_standard</font> <font color="4444FF">=</font> <strong>sizeof</strong><font color="4444FF">(</font><font color="#2040a0">mywifi_std_handlers</font><font color="4444FF">)</font> /
+    <strong>sizeof</strong><font color="4444FF">(</font><font color="#2040a0">iw_handler</font><font color="4444FF">)</font>,
+    .<font color="#2040a0">private</font> <font color="4444FF">=</font> <font color="4444FF">(</font><font color="#2040a0">iw_handler</font> <font color="4444FF">*</font><font color="4444FF">)</font> <font color="#2040a0">mywifi_pvt_handlers</font>,
+    .<font color="#2040a0">num_private</font> <font color="4444FF">=</font> <strong>sizeof</strong><font color="4444FF">(</font><font color="#2040a0">mywifi_pvt_handlers</font><font color="4444FF">)</font> /
+    <strong>sizeof</strong><font color="4444FF">(</font><font color="#2040a0">iw_handler</font><font color="4444FF">)</font>,
+    .<font color="#2040a0">private_args</font> <font color="4444FF">=</font> <font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">iw_priv_args</font> <font color="4444FF">*</font><font color="4444FF">)</font><font color="#2040a0">mywifi_pvt_args</font>,
+    .<font color="#2040a0">num_private_args</font> <font color="4444FF">=</font> <strong>sizeof</strong><font color="4444FF">(</font><font color="#2040a0">mywifi_pvt_args</font><font color="4444FF">)</font> /
+    <strong>sizeof</strong><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">iw_priv_args</font><font color="4444FF">)</font>,
+    .<font color="#2040a0">get_wireless_stats</font> <font color="4444FF">=</font> <font color="#2040a0">mywifi_stats</font>,
+<font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+
+<font color="#444444">/* Handlers corresponding to iwconfig */</font>
+<strong>static</strong> <font color="#2040a0">iw_handler</font> <font color="#2040a0">mywifi_std_handlers</font><font color="4444FF">[</font><font color="4444FF">]</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font>
+    <font color="#2040a0">NULL</font>,            <font color="#444444">/* SIOCSIWCOMMIT */</font>
+    <font color="#2040a0">mywifi_get_name</font>, <font color="#444444">/* SIOCGIWNAME */</font>
+    <font color="#2040a0">NULL</font>,            <font color="#444444">/* SIOCSIWNWID */</font>
+    <font color="#2040a0">NULL</font>,            <font color="#444444">/* SIOCGIWNWID */</font>
+    <font color="#2040a0">mywifi_set_freq</font>, <font color="#444444">/* SIOCSIWFREQ */</font>
+    <font color="#2040a0">mywifi_get_freq</font>, <font color="#444444">/* SIOCGIWFREQ */</font>
+    <font color="#2040a0">mywifi_set_mode</font>, <font color="#444444">/* SIOCSIWMODE */</font>
+    <font color="#2040a0">mywifi_get_mode</font>, <font color="#444444">/* SIOCGIWMODE */</font>
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+
+<font color="0000ff"><strong>#define MYWIFI_MYPARAMETER SIOCIWFIRSTPRIV</strong></font>
+<font color="#444444">/* Handlers corresponding to iwpriv */</font>
+<strong>static</strong> <font color="#2040a0">iw_handler</font> <font color="#2040a0">mywifi_pvt_handlers</font><font color="4444FF">[</font><font color="4444FF">]</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font>
+    <font color="#2040a0">mywifi_set_myparameter</font>,
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+
+<font color="#444444">/* Argument description of private handlers */</font>
+<strong>static</strong> <strong>const</strong> <strong>struct</strong> <font color="#2040a0">iw_priv_args</font> <font color="#2040a0">mywifi_pvt_args</font><font color="4444FF">[</font><font color="4444FF">]</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font>
+    <font color="4444FF"><strong>{</strong></font> <font color="#2040a0">MYWIFI_MYPARAMATER</font>,
+      <font color="#2040a0">IW_PRIV_TYPE_INT</font> <font color="4444FF">|</font> <font color="#2040a0">IW_PRIV_SIZE_FIXED</font> <font color="4444FF">|</font> <font color="#FF0000">1</font>, <font color="#FF0000">0</font>, <font color="#008000">&quot;myparam&quot;</font><font color="4444FF"><strong>}</strong></font>,
+<font color="4444FF"><strong>}</strong></font>
+
+<strong>struct</strong> <font color="#2040a0">iw_statistics</font> <font color="#2040a0">mywifi_stats</font><font color="4444FF">;</font> <font color="#444444">/* WLAN Statistics */</font>
+<font color="#444444">/* Method to set operational frequency supplied via mywifi_std_handlers.
+   Similarly implement the rest of the methods */</font>
+<font color="#2040a0">mywifi_set_freq</font><font color="4444FF">(</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* Set frequency as specified in the data sheet */</font>
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Called when you read /proc/net/wireless */</font>
+<strong>static</strong> <strong>struct</strong> <font color="#2040a0">iw_statistics</font> <font color="4444FF">*</font>
+<font color="#2040a0">mywifi_stats</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">net_device</font> <font color="4444FF">*</font><font color="#2040a0">dev</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* Fill the fields in mywifi_stats */</font>
+    <font color="#444444">/* ... */</font>
+
+    <strong>return</strong><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">mywifi_stats</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/*Device initialization. For PCI-based cards, this is called from the
+  probe() method. Revisit init_mycard() in Listing 15.1 in Chapter 15
+  for a full discussion */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">init_mywifi_card</font><font color="4444FF">(</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>struct</strong> <font color="#2040a0">net_device</font> <font color="4444FF">*</font><font color="#2040a0">netdev</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Allocate WiFi network device. Internally calls
+       alloc_etherdev() */</font>
+    <font color="#2040a0">netdev</font> <font color="4444FF">=</font> <font color="#2040a0">alloc_ieee80211</font><font color="4444FF">(</font><strong>sizeof</strong><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">mywifi_priv</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* ... */</font>
+
+    <font color="#444444">/* Register Wireless Extensions support */</font>
+    <font color="#2040a0">netdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">wireless_handlers</font> <font color="4444FF">=</font> <font color="4444FF">&amp;</font><font color="#2040a0">mywifi_handler_def</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* ... */</font>
+
+    <font color="#2040a0">register_netdev</font><font color="4444FF">(</font><font color="#2040a0">netdev</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

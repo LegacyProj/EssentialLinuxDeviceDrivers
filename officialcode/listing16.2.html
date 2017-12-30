@@ -1,0 +1,105 @@
+<html>
+<head>
+  <title>Listing 16.2</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="0000ff"><strong>#include <font color="#008000">&lt;linux/delay.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;net/irda/irda.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&quot;sir-dev.h&quot;</font> /* Assume that this sample driver lives in</strong></font>
+                        <font color="#2040a0">drivers</font>/<font color="#2040a0">net</font>/<font color="#2040a0">irda</font>/ <font color="4444FF">*</font>/
+
+<font color="#444444">/* Open Method. This is invoked when an irattach is issued on the
+   associated UART */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">mydongle_open</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">sir_dev</font> <font color="4444FF">*</font><font color="#2040a0">dev</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>struct</strong> <font color="#2040a0">qos_info</font> <font color="4444FF">*</font><font color="#2040a0">qos</font> <font color="4444FF">=</font> <font color="4444FF">&amp;</font><font color="#2040a0">dev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">qos</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Power the dongle by setting modem control lines, DTR/RTS. */</font>
+    <font color="#2040a0">sirdev_set_dtr_rts</font><font color="4444FF">(</font><font color="#2040a0">dev</font>, <font color="#2040a0">TRUE</font>, <font color="#2040a0">TRUE</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Speeds that mydongle can accept */</font>
+    <font color="#2040a0">qos</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">baud_rate</font>.<font color="#2040a0">bits</font> <font color="4444FF">&amp;</font><font color="4444FF">=</font> <font color="#2040a0">IR_19200</font><font color="4444FF">|</font><font color="#2040a0">IR_57600</font><font color="4444FF">;</font>
+    <font color="#2040a0">irda_qos_bits_to_value</font><font color="4444FF">(</font><font color="#2040a0">qos</font><font color="4444FF">)</font><font color="4444FF">;</font> <font color="#444444">/* Set QoS */</font>
+
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Change baud rate */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">mydongle_change_speed</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">sir_dev</font> <font color="4444FF">*</font><font color="#2040a0">dev</font>, <strong>unsigned</strong> <font color="#2040a0">speed</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">(</font><font color="#2040a0">speed</font> <font color="4444FF">=</font><font color="4444FF">=</font> <font color="#FF0000">19200</font><font color="4444FF">)</font> <font color="4444FF">|</font><font color="4444FF">|</font> <font color="4444FF">(</font><font color="#2040a0">speed</font> <font color="4444FF">=</font> <font color="#FF0000">57600</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF"><strong>{</strong></font>
+        <font color="#444444">/* Toggle the speed by pulsing RTS low
+           for 50 us and back high for 25 us */</font>
+        <font color="#2040a0">sirdev_set_dtr_rts</font><font color="4444FF">(</font><font color="#2040a0">dev</font>, <font color="#2040a0">TRUE</font>, <font color="#2040a0">FALSE</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#2040a0">udelay</font><font color="4444FF">(</font><font color="#FF0000">50</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#2040a0">sirdev_set_dtr_rts</font><font color="4444FF">(</font><font color="#2040a0">dev</font>, <font color="#2040a0">TRUE</font>, <font color="#2040a0">TRUE</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#2040a0">udelay</font><font color="4444FF">(</font><font color="#FF0000">25</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font> <strong>else</strong> <font color="4444FF"><strong>{</strong></font>
+        <strong>return</strong> <font color="4444FF">-</font><font color="#2040a0">EINVAL</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Reset */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">mydongle_reset</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">sir_dev</font> <font color="4444FF">*</font><font color="#2040a0">dev</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* Reset the dongle as per the spec, for example,
+       by pulling DTR low for 50 us */</font>
+    <font color="#2040a0">sirdev_set_dtr_rts</font><font color="4444FF">(</font><font color="#2040a0">dev</font>, <font color="#2040a0">FALSE</font>, <font color="#2040a0">TRUE</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">udelay</font><font color="4444FF">(</font><font color="#FF0000">50</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">sirdev_set_dtr_rts</font><font color="4444FF">(</font><font color="#2040a0">dev</font>, <font color="#2040a0">TRUE</font>, <font color="#2040a0">TRUE</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">dev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">speed</font> <font color="4444FF">=</font> <font color="#FF0000">19200</font><font color="4444FF">;</font> <font color="#444444">/* Reset speed is 19200 baud */</font>
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Close */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">mydongle_close</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">sir_dev</font> <font color="4444FF">*</font><font color="#2040a0">dev</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* Power off the dongle as per the spec,
+       for example, by pulling DTR and RTS low.. */</font>
+    <font color="#2040a0">sirdev_set_dtr_rts</font><font color="4444FF">(</font><font color="#2040a0">dev</font>, <font color="#2040a0">FALSE</font>, <font color="#2040a0">FALSE</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Dongle Driver Methods */</font>
+<strong>static</strong> <strong>struct</strong> <font color="#2040a0">dongle_driver</font> <font color="#2040a0">mydongle</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font>
+    .<font color="#2040a0">owner</font> <font color="4444FF">=</font> <font color="#2040a0">THIS_MODULE</font>,
+    .<font color="#2040a0">type</font> <font color="4444FF">=</font> <font color="#2040a0">MY_DONGLE</font>,                  <font color="#444444">/* Add this to the enumeration
+                                           in include/linux/irda.h */</font>
+    .<font color="#2040a0">open</font> <font color="4444FF">=</font> <font color="#2040a0">mydongle_open</font>,              <font color="#444444">/* Open */</font>
+    .<font color="#2040a0">reset</font> <font color="4444FF">=</font> <font color="#2040a0">mydongle_reset</font>,            <font color="#444444">/* Reset */</font>
+    .<font color="#2040a0">set_speed</font> <font color="4444FF">=</font> <font color="#2040a0">mydongle_change_speed</font>, <font color="#444444">/* Change Speed */</font>
+    .<font color="#2040a0">close</font> <font color="4444FF">=</font> <font color="#2040a0">mydongle_close</font>,            <font color="#444444">/* Close */</font>
+<font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+
+<font color="#444444">/* Initialize */</font>
+<strong>static</strong> <strong>int</strong> <font color="#2040a0">__init</font>
+<font color="#2040a0">mydongle_init</font><font color="4444FF">(</font><strong>void</strong><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* Register the entry points */</font>
+    <strong>return</strong> <font color="#2040a0">irda_register_dongle</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">mydongle</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Release */</font>
+<strong>static</strong> <strong>void</strong> <font color="#2040a0">__exit</font>
+<font color="#2040a0">mydongle_cleanup</font><font color="4444FF">(</font><strong>void</strong><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* Unregister entry points */</font>
+    <font color="#2040a0">irda_unregister_dongle</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">mydongle</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#2040a0">module_init</font><font color="4444FF">(</font><font color="#2040a0">mydongle_init</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="#2040a0">module_exit</font><font color="4444FF">(</font><font color="#2040a0">mydongle_cleanup</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

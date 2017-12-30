@@ -1,0 +1,28 @@
+<html>
+<head>
+  <title>Listing 21.6</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<strong>int</strong> <font color="#2040a0">vfs_readdir</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">file</font> <font color="4444FF">*</font><font color="#2040a0">file</font>, <font color="#2040a0">filldir_t</font> <font color="#2040a0">filler</font>, <strong>void</strong> <font color="4444FF">*</font><font color="#2040a0">buf</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>struct</strong> <font color="#2040a0">inode</font> <font color="4444FF">*</font><font color="#2040a0">inode</font> <font color="4444FF">=</font> <font color="#2040a0">file</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">f_</font> <font color="#2040a0">dentry</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">d_inode</font><font color="4444FF">;</font>
+    <strong>int</strong> <font color="#2040a0">res</font> <font color="4444FF">=</font> <font color="4444FF">-</font><font color="#2040a0">ENOTDIR</font><font color="4444FF">;</font>
+<font color="4444FF">+</font>   <font color="#444444">/* Introduce a millisecond bottleneck
++      (HZ is set to 1000 on this system) */</font>
+<font color="4444FF">+</font>   <strong>unsigned</strong> <strong>long</strong> <font color="#2040a0">timeout</font> <font color="4444FF">=</font> <font color="#2040a0">jiffies</font><font color="4444FF">+</font><font color="#FF0000">1</font><font color="4444FF">;</font>
+
+<font color="4444FF">+</font>   <strong>while</strong> <font color="4444FF">(</font><font color="#2040a0">time_before</font><font color="4444FF">(</font><font color="#2040a0">jiffies</font>, <font color="#2040a0">timeout</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF">+</font>   <font color="#444444">/* End of bottleneck */</font>
+
+    <font color="#444444">/* ... */</font>
+    
+<font color="4444FF"><strong>}</strong></font>
+
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

@@ -1,0 +1,138 @@
+<html>
+<head>
+  <title>Listing 11.3</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="#444444">/* Device-specific structure */</font>
+<strong>typedef</strong> <strong>struct</strong> <font color="4444FF"><strong>{</strong></font>
+    <strong>struct</strong> <font color="#2040a0">usb_device</font> <font color="4444FF">*</font><font color="#2040a0">usbdev</font><font color="4444FF">;</font>       <font color="#444444">/* Device representation */</font>
+    <strong>struct</strong> <font color="#2040a0">usb_interface</font> <font color="4444FF">*</font><font color="#2040a0">interface</font><font color="4444FF">;</font> <font color="#444444">/* Interface representation*/</font>
+    <strong>struct</strong> <font color="#2040a0">urb</font> <font color="4444FF">*</font><font color="#2040a0">ctrl_urb</font><font color="4444FF">;</font>            <font color="#444444">/* Control URB for
+                                        register access */</font>
+    <strong>struct</strong> <font color="#2040a0">usb_ctrlrequest</font> <font color="#2040a0">ctrl_req</font><font color="4444FF">;</font> <font color="#444444">/* Control request
+                                        as per the spec */</font>
+    <strong>unsigned</strong> <strong>char</strong> <font color="4444FF">*</font><font color="#2040a0">bulk_in_buf</font><font color="4444FF">;</font>      <font color="#444444">/* Receive data buffer */</font>
+    <font color="#2040a0">size_t</font> <font color="#2040a0">bulk_in_len</font><font color="4444FF">;</font>              <font color="#444444">/* Receive buffer size */</font>
+    <font color="#2040a0">__u8</font> <font color="#2040a0">bulk_in_addr</font><font color="4444FF">;</font>               <font color="#444444">/* IN endpoint address */</font>
+    <font color="#2040a0">__u8</font> <font color="#2040a0">bulk_out_addr</font><font color="4444FF">;</font>              <font color="#444444">/* OUT endpoint address */</font>
+    <font color="#444444">/* ... */</font>                        <font color="#444444">/* Locks, waitqueues,
+                                        statistics.. */</font>
+<font color="4444FF"><strong>}</strong></font> <font color="#2040a0">tele_device_t</font><font color="4444FF">;</font>
+
+<font color="0000ff"><strong>#define TELE_MINOR_BASE 0xAB /* Assigned by the Linux-USB</strong></font>
+                                <font color="#2040a0">subsystem</font> <font color="#2040a0">maintainer</font> <font color="4444FF">*</font>/
+
+<font color="#444444">/* Conventional char driver entry points.
+   See Chapter 5, &quot;Character Drivers.&quot; */</font>
+<strong>static</strong> <strong>struct</strong> <font color="#2040a0">file_operations</font> <font color="#2040a0">tele_fops</font> <font color="4444FF">=</font>
+    <font color="4444FF"><strong>{</strong></font>
+        .<font color="#2040a0">owner</font> <font color="4444FF">=</font> <font color="#2040a0">THIS_MODULE</font>,    <font color="#444444">/* Owner */</font>
+        .<font color="#2040a0">read</font> <font color="4444FF">=</font> <font color="#2040a0">tele_read</font>,       <font color="#444444">/* Read method */</font>
+        .<font color="#2040a0">write</font> <font color="4444FF">=</font> <font color="#2040a0">tele_write</font>,     <font color="#444444">/* Write method */</font>
+        .<font color="#2040a0">ioctl</font> <font color="4444FF">=</font> <font color="#2040a0">tele_ioctl</font>,     <font color="#444444">/* Ioctl method */</font>
+        .<font color="#2040a0">open</font> <font color="4444FF">=</font> <font color="#2040a0">tele_open</font>,       <font color="#444444">/* Open method */</font>
+        .<font color="#2040a0">release</font> <font color="4444FF">=</font> <font color="#2040a0">tele_release</font>, <font color="#444444">/* Close method */</font>
+    <font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+
+<strong>static</strong> <strong>struct</strong> <font color="#2040a0">usb_class_driver</font> <font color="#2040a0">tele_class</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font>
+    .<font color="#2040a0">name</font> <font color="4444FF">=</font> <font color="#008000">&quot;tele&quot;</font>,
+    .<font color="#2040a0">fops</font> <font color="4444FF">=</font> <font color="4444FF">&amp;</font><font color="#2040a0">tele_fops</font>,            <font color="#444444">/* Connect with /dev/tele */</font>
+    .<font color="#2040a0">minor_base</font> <font color="4444FF">=</font> <font color="#2040a0">TELE_MINOR_BASE</font>, <font color="#444444">/* Minor number start */</font>
+<font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+
+<font color="#444444">/* The probe() method is invoked by khubd after device
+   enumeration. The first argument interface, contains information
+   gleaned during the enumeration process. id is the entry in the
+   driver’s usb_device_id table that matches the values read from
+   the telemetry card. tele_probe() is based on skel_probe()
+   defined in drivers/usb/usb-skeleton.c */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">tele_probe</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">usb_interface</font> <font color="4444FF">*</font><font color="#2040a0">interface</font>,
+           <strong>const</strong> <strong>struct</strong> <font color="#2040a0">usb_device_id</font> <font color="4444FF">*</font><font color="#2040a0">id</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>struct</strong> <font color="#2040a0">usb_host_interface</font> <font color="4444FF">*</font><font color="#2040a0">iface_desc</font><font color="4444FF">;</font>
+    <strong>struct</strong> <font color="#2040a0">usb_endpoint_descriptor</font> <font color="4444FF">*</font><font color="#2040a0">endpoint</font><font color="4444FF">;</font>
+    <font color="#2040a0">tele_device_t</font> <font color="4444FF">*</font><font color="#2040a0">tele_device</font><font color="4444FF">;</font>
+    <strong>int</strong> <font color="#2040a0">retval</font> <font color="4444FF">=</font> <font color="4444FF">-</font><font color="#2040a0">ENOMEM</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Allocate the device-specific structure */</font>
+    <font color="#2040a0">tele_device</font> <font color="4444FF">=</font> <font color="#2040a0">kzalloc</font><font color="4444FF">(</font><strong>sizeof</strong><font color="4444FF">(</font><font color="#2040a0">tele_device_t</font><font color="4444FF">)</font>, <font color="#2040a0">GFP_KERNEL</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Fill the usb_device and usb_interface */</font>
+    <font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">usbdev</font> <font color="4444FF">=</font>
+        <font color="#2040a0">usb_get_dev</font><font color="4444FF">(</font><font color="#2040a0">interface_to_usbdev</font><font color="4444FF">(</font><font color="#2040a0">interface</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">interface</font> <font color="4444FF">=</font> <font color="#2040a0">interface</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Set up endpoint information from the data gleaned
+       during device enumeration */</font>
+    <font color="#2040a0">iface_desc</font> <font color="4444FF">=</font> <font color="#2040a0">interface</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">cur_altsetting</font><font color="4444FF">;</font>
+    <strong>for</strong> <font color="4444FF">(</font><strong>int</strong> <font color="#2040a0">i</font> <font color="4444FF">=</font> <font color="#FF0000">0</font><font color="4444FF">;</font> <font color="#2040a0">i</font> <font color="4444FF">&lt;</font> <font color="#2040a0">iface_desc</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">desc</font>.<font color="#2040a0">bNumEndpoints</font><font color="4444FF">;</font> <font color="4444FF">+</font><font color="4444FF">+</font><font color="#2040a0">i</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#2040a0">endpoint</font> <font color="4444FF">=</font> <font color="4444FF">&amp;</font><font color="#2040a0">iface_desc</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">endpoint</font><font color="4444FF">[</font><font color="#2040a0">i</font><font color="4444FF">]</font>.<font color="#2040a0">desc</font><font color="4444FF">;</font>
+        <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">!</font><font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">bulk_in_addr</font> <font color="4444FF">&amp;</font><font color="4444FF">&amp;</font>
+            <font color="#2040a0">usb_endpoint_is_bulk_in</font><font color="4444FF">(</font><font color="#2040a0">endpoint</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+            <font color="#444444">/* Bulk IN endpoint */</font>
+            <font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">bulk_in_len</font> <font color="4444FF">=</font>
+                <font color="#2040a0">le16_to_cpu</font><font color="4444FF">(</font><font color="#2040a0">endpoint</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">wMaxPacketSize</font><font color="4444FF">)</font><font color="4444FF">;</font>
+            <font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">bulk_in_addr</font> <font color="4444FF">=</font> <font color="#2040a0">endpoint</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">bEndpointAddress</font><font color="4444FF">;</font>
+            <font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">bulk_in_buf</font> <font color="4444FF">=</font>
+                <font color="#2040a0">kmalloc</font><font color="4444FF">(</font><font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">bulk_in_len</font>, <font color="#2040a0">GFP_KERNEL</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="4444FF"><strong>}</strong></font>
+        <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">!</font><font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">bulk_out_addr</font> <font color="4444FF">&amp;</font><font color="4444FF">&amp;</font>
+            <font color="#2040a0">usb_endpoint_is_bulk_out</font><font color="4444FF">(</font><font color="#2040a0">endpoint</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+            <font color="#444444">/* Bulk OUT endpoint */</font>
+            <font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">bulk_out_addr</font> <font color="4444FF">=</font> <font color="#2040a0">endpoint</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">bEndpointAddress</font><font color="4444FF">;</font>
+        <font color="4444FF"><strong>}</strong></font>
+        
+    <font color="4444FF"><strong>}</strong></font>
+
+    <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">!</font><font color="4444FF">(</font><font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">bulk_in_addr</font> <font color="4444FF">&amp;</font><font color="4444FF">&amp;</font> <font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">bulk_out_addr</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <strong>return</strong> <font color="#2040a0">retval</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#444444">/* Attach the device-specific structure to this interface.
+       We will retrieve it from tele_open() */</font>
+    <font color="#2040a0">usb_set_intfdata</font><font color="4444FF">(</font><font color="#2040a0">interface</font>, <font color="#2040a0">tele_device</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Register the device */</font>
+    <font color="#2040a0">retval</font> <font color="4444FF">=</font> <font color="#2040a0">usb_register_dev</font><font color="4444FF">(</font><font color="#2040a0">interface</font>, <font color="4444FF">&amp;</font><font color="#2040a0">tele_class</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">retval</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#2040a0">usb_set_intfdata</font><font color="4444FF">(</font><font color="#2040a0">interface</font>, <font color="#2040a0">NULL</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <strong>return</strong> <font color="#2040a0">retval</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#2040a0">printk</font><font color="4444FF">(</font><font color="#008000">&quot;Telemetry device now attached to /dev/tele<font color="#77dd77">\n</font>&quot;</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Disconnect method. Called when the device is unplugged or when the module is
+   unloaded */</font>
+<strong>static</strong> <strong>void</strong>
+<font color="#2040a0">tele_disconnect</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">usb_interface</font> <font color="4444FF">*</font><font color="#2040a0">interface</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#2040a0">tele_device_t</font> <font color="4444FF">*</font><font color="#2040a0">tele_device</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* ... */</font>
+
+    <font color="#444444">/* Reverse of usb_set_intfdata() invoked from tele_probe() */</font>
+    <font color="#2040a0">tele_device</font> <font color="4444FF">=</font> <font color="#2040a0">usb_get_intfdata</font><font color="4444FF">(</font><font color="#2040a0">interface</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Zero out interface data */</font>
+    <font color="#2040a0">usb_set_intfdata</font><font color="4444FF">(</font><font color="#2040a0">interface</font>, <font color="#2040a0">NULL</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Release /dev/tele */</font>
+    <font color="#2040a0">usb_deregister_dev</font><font color="4444FF">(</font><font color="#2040a0">interface</font>, <font color="4444FF">&amp;</font><font color="#2040a0">tele_class</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* NULL the interface. In the real world, protect this
+       operation using locks */</font>
+    <font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">interface</font> <font color="4444FF">=</font> <font color="#2040a0">NULL</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

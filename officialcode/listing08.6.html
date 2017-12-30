@@ -1,0 +1,44 @@
+<html>
+<head>
+  <title>Listing 8.6</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="#2040a0">ssize_t</font>
+<font color="#2040a0">eep_read</font> <font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">file</font> <font color="4444FF">*</font><font color="#2040a0">file</font>, <strong>char</strong> <font color="4444FF">*</font><font color="#2040a0">buf</font>,
+          <font color="#2040a0">size_t</font> <font color="#2040a0">count</font>, <font color="#2040a0">loff_t</font> <font color="4444FF">*</font><font color="#2040a0">ppos</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>int</strong> <font color="#2040a0">i</font>, <font color="#2040a0">transferred</font>, <font color="#2040a0">ret</font>, <font color="#2040a0">my_buf</font><font color="4444FF">[</font><font color="#2040a0">BANK_SIZE</font><font color="4444FF">]</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Get the private client data structure for this bank */</font>
+    <strong>struct</strong> <font color="#2040a0">ee_bank</font> <font color="4444FF">*</font><font color="#2040a0">my_bank</font> <font color="4444FF">=</font>
+        <font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">ee_bank</font> <font color="4444FF">*</font><font color="4444FF">)</font><font color="#2040a0">file</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">private_data</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Check whether the smbus_read_word() functionality is
+       supported */</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">i2c_check_functionality</font><font color="4444FF">(</font><font color="#2040a0">my_bank</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">client</font>,
+                                <font color="#2040a0">I2C_FUNC_SMBUS_READ_WORD_DATA</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#444444">/* Read the data */</font>
+        <strong>while</strong> <font color="4444FF">(</font><font color="#2040a0">transferred</font> <font color="4444FF">&lt;</font> <font color="#2040a0">count</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+            <font color="#2040a0">ret</font> <font color="4444FF">=</font> <font color="#2040a0">i2c_smbus_read_word_data</font><font color="4444FF">(</font><font color="#2040a0">my_bank</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">client</font>,
+                                           <font color="#2040a0">my_bank</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">current_pointer</font><font color="4444FF">+</font><font color="#2040a0">i</font><font color="4444FF">)</font><font color="4444FF">;</font>
+            <font color="#2040a0">my_buf</font><font color="4444FF">[</font><font color="#2040a0">i</font><font color="4444FF">+</font><font color="4444FF">+</font><font color="4444FF">]</font> <font color="4444FF">=</font> <font color="4444FF">(</font><font color="#2040a0">u8</font><font color="4444FF">)</font><font color="4444FF">(</font><font color="#2040a0">ret</font> <font color="4444FF">&amp;</font> <font color="#FF0000">0xFF</font><font color="4444FF">)</font><font color="4444FF">;</font>
+            <font color="#2040a0">my_buf</font><font color="4444FF">[</font><font color="#2040a0">i</font><font color="4444FF">+</font><font color="4444FF">+</font><font color="4444FF">]</font> <font color="4444FF">=</font> <font color="4444FF">(</font><font color="#2040a0">u8</font><font color="4444FF">)</font><font color="4444FF">(</font><font color="#2040a0">ret</font> <font color="4444FF">&gt;</font><font color="4444FF">&gt;</font> <font color="#FF0000">8</font><font color="4444FF">)</font><font color="4444FF">;</font>
+            <font color="#2040a0">transferred</font> <font color="4444FF">+</font><font color="4444FF">=</font> <font color="#FF0000">2</font><font color="4444FF">;</font>
+        <font color="4444FF"><strong>}</strong></font>
+
+        <font color="#444444">/* Copy data to user space and increment the internal
+           file pointer. Sanity checks are omitted for simplicity */</font>
+        <font color="#2040a0">copy_to_user</font><font color="4444FF">(</font><font color="#2040a0">buffer</font>, <font color="4444FF">(</font><strong>void</strong> <font color="4444FF">*</font><font color="4444FF">)</font><font color="#2040a0">my_buf</font>, <font color="#2040a0">transferred</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#2040a0">my_bank</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">current_pointer</font> <font color="4444FF">+</font><font color="4444FF">=</font> <font color="#2040a0">transferred</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <strong>return</strong> <font color="#2040a0">transferred</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

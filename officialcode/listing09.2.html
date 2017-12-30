@@ -1,0 +1,90 @@
+<html>
+<head>
+  <title>Listing 9.2</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="0000ff"><strong>#include <font color="#008000">&lt;pcmcia/cistpl.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;pcmcia/ds.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;pcmcia/cs.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;pcmcia/cisreg.h&gt;</font></strong></font>
+
+<font color="#444444">/* This makes the XX device available to the system. XX_config()
+   is based on airo_config(), defined in
+   drivers/net/wireless/airo_cs.c */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">XX_config</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">pcmcia_device</font> <font color="4444FF">*</font><font color="#2040a0">link</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#2040a0">tuple_t</font> <font color="#2040a0">tuple</font><font color="4444FF">;</font>
+    <font color="#2040a0">cisparse_t</font> <font color="#2040a0">parse</font><font color="4444FF">;</font>
+    <font color="#2040a0">u_char</font> <font color="#2040a0">buf</font><font color="4444FF">[</font><font color="#FF0000">64</font><font color="4444FF">]</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Populate a tuple_t structure with the identity of the desired
+       tuple. In this case, we're looking for a configuration table
+       entry */</font>
+    <font color="#2040a0">tuple</font>.<font color="#2040a0">DesiredTuple</font> <font color="4444FF">=</font> <font color="#2040a0">CISTPL_CFTABLE_ENTRY</font><font color="4444FF">;</font>
+    <font color="#2040a0">tuple</font>.<font color="#2040a0">Attributes</font> <font color="4444FF">=</font> <font color="#FF0000">0</font><font color="4444FF">;</font>
+    <font color="#2040a0">tuple</font>.<font color="#2040a0">TupleData</font> <font color="4444FF">=</font> <font color="#2040a0">buf</font><font color="4444FF">;</font>
+    <font color="#2040a0">tuple</font>.<font color="#2040a0">TupleDataMax</font> <font color="4444FF">=</font> <strong>sizeof</strong><font color="4444FF">(</font><font color="#2040a0">buf</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Walk the CIS for a matching tuple and glean card configuration
+       information such as I/O window base addresses */</font>
+    <font color="#444444">/* Get first tuple */</font>
+    <font color="#2040a0">CS_CHECK</font><font color="4444FF">(</font><font color="#2040a0">GetFirstTuple</font>, <font color="#2040a0">pcmcia_get_first_tuple</font><font color="4444FF">(</font><font color="#2040a0">link</font>, <font color="4444FF">&amp;</font><font color="#2040a0">tuple</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>while</strong> <font color="4444FF">(</font><font color="#FF0000">1</font><font color="4444FF">)</font><font color="4444FF"><strong>{</strong></font>
+        <font color="#2040a0">cistpl_cftable_entry_t</font> <font color="#2040a0">dflt</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font><font color="#FF0000">0</font><font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+        <font color="#2040a0">cistpl_cftable_entry_t</font> <font color="4444FF">*</font><font color="#2040a0">cfg</font> <font color="4444FF">=</font> <font color="4444FF">&amp;</font><font color="4444FF">(</font><font color="#2040a0">parse</font>.<font color="#2040a0">cftable_entry</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#444444">/* Read a configuration tuple from the card's CIS space */</font>
+        <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">pcmcia_get_tuple_data</font><font color="4444FF">(</font><font color="#2040a0">link</font>, <font color="4444FF">&amp;</font><font color="#2040a0">tuple</font><font color="4444FF">)</font> <font color="4444FF">!</font><font color="4444FF">=</font> <font color="#FF0000">0</font> <font color="4444FF">|</font><font color="4444FF">|</font>
+            <font color="#2040a0">pcmcia_parse_tuple</font><font color="4444FF">(</font><font color="#2040a0">link</font>, <font color="4444FF">&amp;</font><font color="#2040a0">tuple</font>, <font color="4444FF">&amp;</font><font color="#2040a0">parse</font><font color="4444FF">)</font> <font color="4444FF">!</font><font color="4444FF">=</font> <font color="#FF0000">0</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+            <strong>goto</strong> <font color="#2040a0">next_entry</font><font color="4444FF">;</font>
+        <font color="4444FF"><strong>}</strong></font> 
+        <font color="#444444">/* We have a matching tuple! */</font>
+
+        <font color="#444444">/* Configure power settings in the pcmcia_device based on
+           what was found in the parsed tuple entry */</font>
+        <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">cfg</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">vpp1</font>.<font color="#2040a0">present</font> <font color="4444FF">&amp;</font> <font color="4444FF">(</font><font color="#FF0000">1</font><font color="4444FF">&lt;</font><font color="4444FF">&lt;</font><font color="#2040a0">CISTPL_POWER_VNOM</font><font color="4444FF">)</font><font color="4444FF">)</font>
+            <font color="#2040a0">link</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">conf</font>.<font color="#2040a0">Vpp</font> <font color="4444FF">=</font> <font color="#2040a0">cfg</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">vpp1</font>.<font color="#2040a0">param</font><font color="4444FF">[</font><font color="#2040a0">CISTPL_POWER_VNOM</font><font color="4444FF">]</font>/<font color="#FF0000">10000</font><font color="4444FF">;</font>
+
+        <font color="#444444">/* ... */</font>
+
+        <font color="#444444">/* Configure I/O window settings in the pcmcia_device based on
+           what was found in the parsed tuple entry */</font>
+        <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">(</font><font color="#2040a0">cfg</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">io</font>.<font color="#2040a0">nwin</font> <font color="4444FF">&gt;</font> <font color="#FF0000">0</font><font color="4444FF">)</font> <font color="4444FF">|</font><font color="4444FF">|</font> <font color="4444FF">(</font><font color="#2040a0">dflt</font>.<font color="#2040a0">io</font>.<font color="#2040a0">nwin</font> <font color="4444FF">&gt;</font> <font color="#FF0000">0</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+            <font color="#2040a0">cistpl_io_t</font> <font color="4444FF">*</font><font color="#2040a0">io</font> <font color="4444FF">=</font> <font color="4444FF">(</font><font color="#2040a0">cfg</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">io</font>.<font color="#2040a0">nwin</font><font color="4444FF">)</font> ? <font color="4444FF">&amp;</font><font color="#2040a0">cfg</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">io</font> <font color="4444FF">:</font> <font color="4444FF">&amp;</font><font color="#2040a0">dflt</font>.<font color="#2040a0">io</font><font color="4444FF">;</font>
+            <font color="#444444">/* ... */</font>
+            <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">!</font><font color="4444FF">(</font><font color="#2040a0">io</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">flags</font> <font color="4444FF">&amp;</font> <font color="#2040a0">CISTPL_IO_8BIT</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+                <font color="#2040a0">link</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">io</font>.<font color="#2040a0">Attributes1</font> <font color="4444FF">=</font> <font color="#2040a0">IO_DATA_PATH_WIDTH_16</font><font color="4444FF">;</font>
+            <font color="4444FF"><strong>}</strong></font>
+            <font color="#2040a0">link</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">io</font>.<font color="#2040a0">BasePort1</font> <font color="4444FF">=</font> <font color="#2040a0">io</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">win</font><font color="4444FF">[</font><font color="#FF0000">0</font><font color="4444FF">]</font>.<font color="#2040a0">base</font><font color="4444FF">;</font>
+            <font color="#444444">/* ... */</font>
+        <font color="4444FF"><strong>}</strong></font>
+        <font color="#444444">/* ... */</font>
+        <strong>break</strong><font color="4444FF">;</font>
+    <font color="#2040a0">next_entry</font><font color="4444FF">:</font>
+        <font color="#2040a0">CS_CHECK</font><font color="4444FF">(</font><font color="#2040a0">GetNextTuple</font>, <font color="#2040a0">pcmcia_get_next_tuple</font><font color="4444FF">(</font><font color="#2040a0">link</font>, <font color="4444FF">&amp;</font><font color="#2040a0">tuple</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#444444">/* Allocate IRQ */</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">link</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">conf</font>.<font color="#2040a0">Attributes</font> <font color="4444FF">&amp;</font> <font color="#2040a0">CONF_ENABLE_IRQ</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#2040a0">CS_CHECK</font><font color="4444FF">(</font><font color="#2040a0">RequestIRQ</font>, <font color="#2040a0">pcmcia_request_irq</font><font color="4444FF">(</font><font color="#2040a0">link</font>, <font color="4444FF">&amp;</font><font color="#2040a0">link</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">irq</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#444444">/* ... */</font>
+
+    <font color="#444444">/* Invoke init_XX_card(), which is part of the generic
+       XX driver (so, not shown in this Listing), and pass
+       the I/O base and IRQ information obtained above */</font>
+    <font color="#2040a0">init_XX_card</font><font color="4444FF">(</font><font color="#2040a0">link</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">irq</font>.<font color="#2040a0">AssignedIRQ</font>, <font color="#2040a0">link</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">io</font>.<font color="#2040a0">BasePort1</font>,
+                 <font color="#FF0000">1</font>, <font color="4444FF">&amp;</font><font color="#2040a0">handle_to_dev</font><font color="4444FF">(</font><font color="#2040a0">link</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* The chip-specific (form factor independent) driver is ready
+       to take responsibility of this card from now on! */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

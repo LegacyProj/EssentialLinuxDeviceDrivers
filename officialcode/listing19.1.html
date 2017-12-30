@@ -1,0 +1,72 @@
+<html>
+<head>
+  <title>Listing 19.1</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="0000ff"><strong>#include <font color="#008000">&lt;linux/rtc.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;sys/ioctl.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;sys/time.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;fcntl.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;pthread.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;linux/mman.h&gt;</font></strong></font>
+
+<font color="#444444">/* Read the lower half of the Pentium Time Stamp Counter
+   using the rdtsc instruction */</font>
+<font color="0000ff"><strong>#define rdtscl(val) __asm__ __volatile__ (<font color="#008000">&quot;rdtsc&quot;</font> : <font color="#008000">&quot;=A&quot;</font> (val))</strong></font>
+
+<strong>int</strong>
+<font color="#2040a0">main</font><font color="4444FF">(</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>unsigned</strong> <strong>long</strong> <font color="#2040a0">ts0</font>, <font color="#2040a0">ts1</font>, <font color="#2040a0">now</font>, <font color="#2040a0">worst</font><font color="4444FF">;</font> <font color="#444444">/* Store TSC ticks */</font>
+    <strong>struct</strong> <font color="#2040a0">sched_param</font> <font color="#2040a0">sched_p</font><font color="4444FF">;</font>         <font color="#444444">/* Information related to
+                                           scheduling priority */</font>
+    <strong>int</strong> <font color="#2040a0">fd</font>, <font color="#2040a0">i</font><font color="4444FF">=</font><font color="#FF0000">0</font><font color="4444FF">;</font>
+    <strong>unsigned</strong> <strong>long</strong> <font color="#2040a0">data</font><font color="4444FF">;</font>
+    
+    <font color="#444444">/* Change the scheduling policy to SCHED_FIFO */</font>
+    <font color="#2040a0">sched_getparam</font><font color="4444FF">(</font><font color="#2040a0">getpid</font><font color="4444FF">(</font><font color="4444FF">)</font>, <font color="4444FF">&amp;</font><font color="#2040a0">sched_p</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">sched_p</font>.<font color="#2040a0">sched_priority</font> <font color="4444FF">=</font> <font color="#FF0000">50</font><font color="4444FF">;</font> <font color="#444444">/* RT Priority */</font>
+    <font color="#2040a0">sched_setscheduler</font><font color="4444FF">(</font><font color="#2040a0">getpid</font><font color="4444FF">(</font><font color="4444FF">)</font>, <font color="#2040a0">SCHED_FIFO</font>, <font color="4444FF">&amp;</font><font color="#2040a0">sched_p</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Avoid paging and related indeterminism */</font>
+    <font color="#2040a0">mlockall</font><font color="4444FF">(</font><font color="#2040a0">MCL_CURRENT</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Open the RTC */</font>
+    <font color="#2040a0">fd</font> <font color="4444FF">=</font> <font color="#2040a0">open</font><font color="4444FF">(</font><font color="#008000">&quot;/dev/rtc&quot;</font>, <font color="#2040a0">O_RDONLY</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Set the periodic interrupt frequency to 8192Hz
+       This should give an interrupt rate of 122uS */</font>
+    <font color="#2040a0">ioctl</font><font color="4444FF">(</font><font color="#2040a0">fd</font>, <font color="#2040a0">RTC_IRQP_SET</font>, <font color="#FF0000">8192</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Enable periodic interrupts */</font>
+    <font color="#2040a0">ioctl</font><font color="4444FF">(</font><font color="#2040a0">fd</font>, <font color="#2040a0">RTC_PIE_ON</font>, <font color="#FF0000">0</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">rdtscl</font><font color="4444FF">(</font><font color="#2040a0">ts0</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">worst</font> <font color="4444FF">=</font> <font color="#FF0000">0</font><font color="4444FF">;</font>
+    <strong>while</strong> <font color="4444FF">(</font><font color="#2040a0">i</font><font color="4444FF">+</font><font color="4444FF">+</font> <font color="4444FF">&lt;</font> <font color="#FF0000">10000</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#444444">/* Block until the next periodic interrupt */</font>
+        <font color="#2040a0">read</font><font color="4444FF">(</font><font color="#2040a0">fd</font>, <font color="4444FF">&amp;</font><font color="#2040a0">data</font>, <strong>sizeof</strong><font color="4444FF">(</font><strong>unsigned</strong> <strong>long</strong><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#444444">/* Use the TSC to precisely measure the time consumed.
+           Reading the lower half of the TSC is sufficient */</font>
+        <font color="#2040a0">rdtscl</font><font color="4444FF">(</font><font color="#2040a0">ts1</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#2040a0">now</font> <font color="4444FF">=</font> <font color="4444FF">(</font><font color="#2040a0">ts1</font><font color="4444FF">-</font><font color="#2040a0">ts0</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#444444">/* Update the worst case latency */</font>
+        <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">now</font> <font color="4444FF">&gt;</font> <font color="#2040a0">worst</font><font color="4444FF">)</font> <font color="#2040a0">worst</font> <font color="4444FF">=</font> <font color="#2040a0">now</font><font color="4444FF">;</font>
+        <font color="#2040a0">ts0</font> <font color="4444FF">=</font> <font color="#2040a0">ts1</font><font color="4444FF">;</font>
+        <font color="#444444">/* Do work that is to be done periodically */</font>
+        <font color="#2040a0">do_work</font><font color="4444FF">(</font><font color="4444FF">)</font><font color="4444FF">;</font> <font color="#444444">/* NOP for the purpose of this measurement */</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#2040a0">printf</font><font color="4444FF">(</font><font color="#008000">&quot;Worst latency was %8ld<font color="#77dd77">\n</font>&quot;</font>, <font color="#2040a0">worst</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Disable periodic interrupts */</font>
+    <font color="#2040a0">ioctl</font><font color="4444FF">(</font><font color="#2040a0">fd</font>, <font color="#2040a0">RTC_PIE_OFF</font>, <font color="#FF0000">0</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

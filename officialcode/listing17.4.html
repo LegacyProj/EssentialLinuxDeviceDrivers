@@ -1,0 +1,40 @@
+<html>
+<head>
+  <title>Listing 17.4</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+    <font color="#444444">/* Snippet from cfi_probe_chip() (2.6.23.1 kernel) defined in
+       drivers/mtd/chips/cfi_probe.c, with comments added */</font>
+
+    <font color="#444444">/* cfi is a pointer to struct cfi_private defined in
+       include/linux/mtd/cfi.h */</font>
+
+    <font color="#444444">/* ... */</font>
+
+    <font color="#444444">/* Ask the device to enter query mode by sending
+       0x98 to offset 0x55 */</font>
+    <font color="#2040a0">cfi_send_gen_cmd</font><font color="4444FF">(</font><font color="#FF0000">0x98</font>, <font color="#FF0000">0x55</font>, <font color="#2040a0">base</font>, <font color="#2040a0">map</font>, <font color="#2040a0">cfi</font>,
+                     <font color="#2040a0">cfi</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">device_type</font>, <font color="#2040a0">NULL</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* If the device did not return the ASCII characters
+       'Q’, 'R’ and 'Y’, the chip is not CFI-compliant */</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">!</font><font color="#2040a0">qry_present</font><font color="4444FF">(</font><font color="#2040a0">map</font>, <font color="#2040a0">base</font>, <font color="#2040a0">cfi</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#2040a0">xip_enable</font><font color="4444FF">(</font><font color="#2040a0">base</font>, <font color="#2040a0">map</font>, <font color="#2040a0">cfi</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#444444">/* Elicit chip parameters and the command-set, and populate
+       the cfi structure */</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">!</font><font color="#2040a0">cfi</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">numchips</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <strong>return</strong> <font color="#2040a0">cfi_chip_setup</font><font color="4444FF">(</font><font color="#2040a0">map</font>, <font color="#2040a0">cfi</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#444444">/* ... */</font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

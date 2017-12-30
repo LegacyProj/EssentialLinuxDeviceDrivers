@@ -1,0 +1,123 @@
+<html>
+<head>
+  <title>Listing 11.5</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="#444444">/* Read entry point */</font>
+<strong>static</strong> <font color="#2040a0">ssize_t</font>
+<font color="#2040a0">tele_read</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">file</font> <font color="4444FF">*</font><font color="#2040a0">file</font>, <strong>char</strong> <font color="4444FF">*</font><font color="#2040a0">buffer</font>,
+          <font color="#2040a0">size_t</font> <font color="#2040a0">count</font>, <font color="#2040a0">loff_t</font> <font color="4444FF">*</font><font color="#2040a0">ppos</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>int</strong> <font color="#2040a0">retval</font>, <font color="#2040a0">bytes_read</font><font color="4444FF">;</font>
+    <font color="#2040a0">tele_device_t</font> <font color="4444FF">*</font><font color="#2040a0">tele_device</font><font color="4444FF">;</font>
+    <font color="#444444">/* Get the address of tele_device */</font>
+    <font color="#2040a0">tele_device</font> <font color="4444FF">=</font> <font color="4444FF">(</font><font color="#2040a0">tele_device_t</font> <font color="4444FF">*</font><font color="4444FF">)</font><font color="#2040a0">file</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">private_data</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* ... */</font>
+
+    <font color="#444444">/* Synchronous read */</font>
+    <font color="#2040a0">retval</font> <font color="4444FF">=</font> <font color="#2040a0">usb_bulk_msg</font><font color="4444FF">(</font><font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">usbdev</font>, <font color="#444444">/* usb_device */</font>
+                          <font color="#2040a0">usb_rcvbulkpipe</font><font color="4444FF">(</font><font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">usbdev</font>,
+                                          <font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">bulk_in_addr</font><font color="4444FF">)</font>,
+                                               <font color="#444444">/* Pipe */</font>
+                          <font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">bulk_in_buf</font>,
+                                               <font color="#444444">/* Read buffer */</font>
+                          <font color="#2040a0">min</font><font color="4444FF">(</font><font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">bulk_in_len</font>,<font color="#2040a0">count</font><font color="4444FF">)</font>,
+                                               <font color="#444444">/* Bytes to read */</font>
+                          <font color="4444FF">&amp;</font><font color="#2040a0">bytes_read</font>,         <font color="#444444">/* Bytes read */</font>
+                          <font color="#FF0000">5000</font><font color="4444FF">)</font><font color="4444FF">;</font>               <font color="#444444">/* Timeout in 5 sec */</font>
+
+    <font color="#444444">/* Copy telemetry data to user space */</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">!</font><font color="#2040a0">retval</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">copy_to_user</font><font color="4444FF">(</font><font color="#2040a0">buffer</font>, <font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">bulk_in_buf</font>,
+                         <font color="#2040a0">bytes_read</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+            <strong>return</strong> <font color="4444FF">-</font><font color="#2040a0">EFAULT</font><font color="4444FF">;</font>
+        <font color="4444FF"><strong>}</strong></font> <strong>else</strong> <font color="4444FF"><strong>{</strong></font>
+            <strong>return</strong> <font color="#2040a0">bytes_read</font><font color="4444FF">;</font>
+        <font color="4444FF"><strong>}</strong></font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <strong>return</strong> <font color="#2040a0">retval</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Write entry point */</font>
+<strong>static</strong> <font color="#2040a0">ssize_t</font>
+<font color="#2040a0">tele_write</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">file</font> <font color="4444FF">*</font><font color="#2040a0">file</font>, <strong>const</strong> <strong>char</strong> <font color="4444FF">*</font><font color="#2040a0">buffer</font>,
+           <font color="#2040a0">size_t</font> <font color="#2040a0">write_count</font>, <font color="#2040a0">loff_t</font> <font color="4444FF">*</font><font color="#2040a0">ppos</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>char</strong> <font color="4444FF">*</font><font color="#2040a0">tele_buf</font> <font color="4444FF">=</font> <font color="#2040a0">NULL</font><font color="4444FF">;</font>
+    <strong>struct</strong> <font color="#2040a0">urb</font> <font color="4444FF">*</font><font color="#2040a0">urb</font> <font color="4444FF">=</font> <font color="#2040a0">NULL</font><font color="4444FF">;</font>
+    <font color="#2040a0">tele_device_t</font> <font color="4444FF">*</font><font color="#2040a0">tele_device</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Get the address of tele_device */</font>
+    <font color="#2040a0">tele_device</font> <font color="4444FF">=</font> <font color="4444FF">(</font><font color="#2040a0">tele_device_t</font> <font color="4444FF">*</font><font color="4444FF">)</font><font color="#2040a0">file</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">private_data</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* ... */</font>
+
+    <font color="#444444">/* Allocate a bulk URB */</font>
+    <font color="#2040a0">urb</font> <font color="4444FF">=</font> <font color="#2040a0">usb_alloc_urb</font><font color="4444FF">(</font><font color="#FF0000">0</font>, <font color="#2040a0">GFP_KERNEL</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">!</font><font color="#2040a0">urb</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <strong>return</strong> <font color="4444FF">-</font><font color="#2040a0">ENOMEM</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#444444">/* Allocate a DMA-consistent transfer buffer and copy in
+       data from user space. On return, tele_buf contains
+       the buffer’s CPU address, while urb-&gt;transfer_dma
+       contains the DMA address */</font>
+    <font color="#2040a0">tele_buf</font> <font color="4444FF">=</font> <font color="#2040a0">usb_buffer_alloc</font><font color="4444FF">(</font><font color="#2040a0">tele_dev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">usbdev</font>, <font color="#2040a0">write_count</font>,
+                                <font color="#2040a0">GFP_KERNEL</font>, <font color="4444FF">&amp;</font><font color="#2040a0">urb</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">transfer_dma</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">copy_from_user</font><font color="4444FF">(</font><font color="#2040a0">tele_buf</font>, <font color="#2040a0">buffer</font>, <font color="#2040a0">write_count</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#2040a0">usb_buffer_free</font><font color="4444FF">(</font><font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">usbdev</font>, <font color="#2040a0">write_count</font>,
+                        <font color="#2040a0">tele_buf</font>, <font color="#2040a0">urb</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">transfer_dma</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#2040a0">usb_free_urb</font><font color="4444FF">(</font><font color="#2040a0">urb</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <strong>return</strong> <font color="4444FF">-</font><font color="#2040a0">EFAULT</font>
+            <font color="4444FF"><strong>}</strong></font>
+    <font color="#444444">/* Populate bulk URB fields */</font>
+    <font color="#2040a0">usb_fill_bulk_urb</font><font color="4444FF">(</font><font color="#2040a0">urb</font>, <font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">usbdev</font>,
+                      <font color="#2040a0">usb_sndbulkpipe</font><font color="4444FF">(</font><font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">usbdev</font>,
+                                      <font color="#2040a0">tele_device</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">bulk_out_addr</font><font color="4444FF">)</font>,
+                      <font color="#2040a0">tele_buf</font>, <font color="#2040a0">write_count</font>, <font color="#2040a0">tele_write_callback</font>,
+                      <font color="#2040a0">tele_device</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* urb-&gt;transfer_dma is valid, so preferably utilize
+       that for data transfer */</font>
+    <font color="#2040a0">urb</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">transfer_flags</font> <font color="4444FF">|</font><font color="4444FF">=</font> <font color="#2040a0">URB_NO_TRANSFER_DMA_MAP</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Submit URB asynchronously */</font>
+    <font color="#2040a0">usb_submit_urb</font><font color="4444FF">(</font><font color="#2040a0">urb</font>, <font color="#2040a0">GFP_KERNEL</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Release URB reference */</font>
+    <font color="#2040a0">usb_free_urb</font><font color="4444FF">(</font><font color="#2040a0">urb</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <strong>return</strong><font color="4444FF">(</font><font color="#2040a0">write_count</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Write callback */</font>
+<strong>static</strong> <strong>void</strong>
+<font color="#2040a0">tele_write_callback</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">urb</font> <font color="4444FF">*</font><font color="#2040a0">urb</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#2040a0">tele_device_t</font> <font color="4444FF">*</font><font color="#2040a0">tele_device</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Get the address of tele_device */</font>
+    <font color="#2040a0">tele_device</font> <font color="4444FF">=</font> <font color="4444FF">(</font><font color="#2040a0">tele_device_t</font> <font color="4444FF">*</font><font color="4444FF">)</font><font color="#2040a0">urb</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">context</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* urb-&gt;status contains the submission status. It’s 0 if
+       successful. Resubmit the URB in case of errors other than
+       -ENOENT, -ECONNRESET, and -ESHUTDOWN */</font>
+
+    <font color="#444444">/* ... */</font>
+
+    <font color="#444444">/* Free the transfer buffer. usb_buffer_free() is the
+       release-counterpart of usb_buffer_alloc() called
+       from tele_write() */</font>
+    <font color="#2040a0">usb_buffer_free</font><font color="4444FF">(</font><font color="#2040a0">urb</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dev</font>, <font color="#2040a0">urb</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">transfer_buffer_length</font>,
+                    <font color="#2040a0">urb</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">transfer_buffer</font>, <font color="#2040a0">urb</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">transfer_dma</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

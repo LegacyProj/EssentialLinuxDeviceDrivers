@@ -1,0 +1,60 @@
+<html>
+<head>
+  <title>Listing 3.1</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<strong>static</strong> <font color="#2040a0">DECLARE_WAIT_QUEUE_HEAD</font><font color="4444FF">(</font><font color="#2040a0">myevent_waitqueue</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+<font color="#2040a0">rwlock_t</font> <font color="#2040a0">myevent_lock</font><font color="4444FF">;</font>
+<strong>extern</strong> <strong>unsigned</strong> <strong>int</strong> <font color="#2040a0">myevent_id</font><font color="4444FF">;</font> <font color="#444444">/* Holds the identity of the
+                                   troubled data structure.
+                                   Populated later on */</font>
+
+<strong>static</strong> <strong>int</strong> <font color="#2040a0">mykthread</font><font color="4444FF">(</font><strong>void</strong> <font color="4444FF">*</font><font color="#2040a0">unused</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>unsigned</strong> <strong>int</strong> <font color="#2040a0">event_id</font> <font color="4444FF">=</font> <font color="#FF0000">0</font><font color="4444FF">;</font>
+    <font color="#2040a0">DECLARE_WAITQUEUE</font><font color="4444FF">(</font><font color="#2040a0">wait</font>, <font color="#2040a0">current</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Become a kernel thread without attached user resources */</font>
+    <font color="#2040a0">daemonize</font><font color="4444FF">(</font><font color="#008000">&quot;mykthread&quot;</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Request delivery of SIGKILL */</font>
+    <font color="#2040a0">allow_signal</font><font color="4444FF">(</font><font color="#2040a0">SIGKILL</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* The thread sleeps on this wait queue until it's
+       woken up by parts of the kernel in charge of sensing
+       the health of data structures of interest */</font>
+    <font color="#2040a0">add_wait_queue</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">myevent_waitqueue</font>, <font color="4444FF">&amp;</font><font color="#2040a0">wait</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <strong>for</strong> <font color="4444FF">(</font><font color="4444FF">;</font><font color="4444FF">;</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#444444">/* Relinquish the processor until the event occurs */</font>
+        <font color="#2040a0">set_current_state</font><font color="4444FF">(</font><font color="#2040a0">TASK_INTERRUPTIBLE</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#2040a0">schedule</font><font color="4444FF">(</font><font color="4444FF">)</font><font color="4444FF">;</font> <font color="#444444">/* Allow other parts of the kernel to run */</font>
+        <font color="#444444">/* Die if I receive SIGKILL */</font>
+        <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">signal_pending</font><font color="4444FF">(</font><font color="#2040a0">current</font><font color="4444FF">)</font><font color="4444FF">)</font> <strong>break</strong><font color="4444FF">;</font>
+        
+        <font color="#444444">/* Control gets here when the thread is woken up */</font>
+        <font color="#2040a0">read_lock</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">myevent_lock</font><font color="4444FF">)</font><font color="4444FF">;</font> <font color="#444444">/* Critical section starts */</font>
+        <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">myevent_id</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font> <font color="#444444">/* Guard against spurious wakeups */</font>
+            <font color="#2040a0">event_id</font> <font color="4444FF">=</font> <font color="#2040a0">myevent_id</font><font color="4444FF">;</font>
+            <font color="#2040a0">read_unlock</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">myevent_lock</font><font color="4444FF">)</font><font color="4444FF">;</font> <font color="#444444">/* Critical section ends */</font>
+            <font color="#444444">/* Invoke the registered user mode helper and
+               pass the identity code in its environment */</font>
+            <font color="#2040a0">run_umode_handler</font><font color="4444FF">(</font><font color="#2040a0">event_id</font><font color="4444FF">)</font><font color="4444FF">;</font> <font color="#444444">/* Expanded later on */</font>
+        <font color="4444FF"><strong>}</strong></font> <strong>else</strong> <font color="4444FF"><strong>{</strong></font>
+            <font color="#2040a0">read_unlock</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">myevent_lock</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="4444FF"><strong>}</strong></font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#2040a0">set_current_state</font><font color="4444FF">(</font><font color="#2040a0">TASK_RUNNING</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">remove_wait_queue</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">myevent_waitqueue</font>, <font color="4444FF">&amp;</font><font color="#2040a0">wait</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

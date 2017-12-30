@@ -1,0 +1,26 @@
+<html>
+<head>
+  <title>Listing 6.5</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+    <font color="#444444">/* n_touch_receive_buf() continued.. */</font>
+    <font color="#444444">/* Wake up any threads waiting for data */</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">waitqueue_active</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">tty</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">read_wait</font><font color="4444FF">)</font> <font color="4444FF">&amp;</font><font color="4444FF">&amp;</font>
+            <font color="4444FF">(</font><font color="#2040a0">tty</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">read_cnt</font> <font color="4444FF">&gt;</font><font color="4444FF">=</font> <font color="#2040a0">tty</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">minimum_to_wake</font><font color="4444FF">)</font><font color="4444FF">)</font>
+        <font color="#2040a0">wake_up_interruptible</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">tty</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">read_wait</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#444444">/* If we are running out of buffer space, request the
+       serial driver to throttle incoming data */</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">n_touch_receive_room</font><font color="4444FF">(</font><font color="#2040a0">tty</font><font color="4444FF">)</font> <font color="4444FF">&lt;</font> <font color="#2040a0">TOUCH_THROTTLE_THRESHOLD</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#2040a0">tty</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">driver</font>.<font color="#2040a0">throttle</font><font color="4444FF">(</font><font color="#2040a0">tty</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+    <font color="#444444">/* ... */</font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

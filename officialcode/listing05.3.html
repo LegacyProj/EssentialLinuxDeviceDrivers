@@ -1,0 +1,198 @@
+<html>
+<head>
+  <title>Listing 5.3</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="#444444">/*
+ * Read from a CMOS Bank at bit-level granularity
+ */</font>
+<font color="#2040a0">ssize_t</font>
+<font color="#2040a0">cmos_read</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">file</font> <font color="4444FF">*</font><font color="#2040a0">file</font>, <strong>char</strong> <font color="4444FF">*</font><font color="#2040a0">buf</font>,
+          <font color="#2040a0">size_t</font> <font color="#2040a0">count</font>, <font color="#2040a0">loff_t</font> <font color="4444FF">*</font><font color="#2040a0">ppos</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>struct</strong> <font color="#2040a0">cmos_dev</font> <font color="4444FF">*</font><font color="#2040a0">cmos_devp</font> <font color="4444FF">=</font> <font color="#2040a0">file</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">private_data</font><font color="4444FF">;</font>
+    <strong>char</strong> <font color="#2040a0">data</font><font color="4444FF">[</font><font color="#2040a0">CMOS_BANK_SIZE</font><font color="4444FF">]</font><font color="4444FF">;</font>
+    <strong>unsigned</strong> <strong>char</strong> <font color="#2040a0">mask</font><font color="4444FF">;</font>
+    <strong>int</strong> <font color="#2040a0">xferred</font> <font color="4444FF">=</font> <font color="#FF0000">0</font>, <font color="#2040a0">i</font> <font color="4444FF">=</font> <font color="#FF0000">0</font>, <font color="#2040a0">l</font>, <font color="#2040a0">zero_out</font><font color="4444FF">;</font>
+    <strong>int</strong> <font color="#2040a0">start_byte</font> <font color="4444FF">=</font> <font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">current_pointer</font>/<font color="#FF0000">8</font><font color="4444FF">;</font>
+    <strong>int</strong> <font color="#2040a0">start_bit</font> <font color="4444FF">=</font> <font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">current_pointer</font><font color="4444FF">%</font><font color="#FF0000">8</font><font color="4444FF">;</font>
+
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">current_pointer</font> <font color="4444FF">&gt;</font><font color="4444FF">=</font> <font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">size</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font> <font color="#444444">/*EOF*/</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#444444">/* Adjust count if it edges past the end of the CMOS bank */</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">current_pointer</font> <font color="4444FF">+</font> <font color="#2040a0">count</font> <font color="4444FF">&gt;</font> <font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">size</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#2040a0">count</font> <font color="4444FF">=</font> <font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">size</font> <font color="4444FF">-</font> <font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">current_pointer</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#444444">/* Get the specified number of bits from the CMOS */</font>
+    <strong>while</strong> <font color="4444FF">(</font><font color="#2040a0">xferred</font> <font color="4444FF">&lt;</font> <font color="#2040a0">count</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#2040a0">data</font><font color="4444FF">[</font><font color="#2040a0">i</font><font color="4444FF">]</font> <font color="4444FF">=</font> <font color="#2040a0">port_data_in</font><font color="4444FF">(</font><font color="#2040a0">start_byte</font>, <font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">bank_number</font><font color="4444FF">)</font>
+            <font color="4444FF">&gt;</font><font color="4444FF">&gt;</font> <font color="#2040a0">start_bit</font><font color="4444FF">;</font>
+        <font color="#2040a0">xferred</font> <font color="4444FF">+</font><font color="4444FF">=</font> <font color="4444FF">(</font><font color="#FF0000">8</font> <font color="4444FF">-</font> <font color="#2040a0">start_bit</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">(</font><font color="#2040a0">start_bit</font><font color="4444FF">)</font> <font color="4444FF">&amp;</font><font color="4444FF">&amp;</font> <font color="4444FF">(</font><font color="#2040a0">count</font> <font color="4444FF">+</font> <font color="#2040a0">start_bit</font> <font color="4444FF">&gt;</font> <font color="#FF0000">8</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+            <font color="#2040a0">data</font><font color="4444FF">[</font><font color="#2040a0">i</font><font color="4444FF">]</font> <font color="4444FF">|</font><font color="4444FF">=</font> <font color="4444FF">(</font><font color="#2040a0">port_data_in</font> <font color="4444FF">(</font><font color="#2040a0">start_byte</font> <font color="4444FF">+</font> <font color="#FF0000">1</font>,
+                        <font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">bank_number</font><font color="4444FF">)</font> <font color="4444FF">&lt;</font><font color="4444FF">&lt;</font> <font color="4444FF">(</font><font color="#FF0000">8</font> <font color="4444FF">-</font> <font color="#2040a0">start_bit</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">;</font>
+            <font color="#2040a0">xferred</font> <font color="4444FF">+</font><font color="4444FF">=</font> <font color="#2040a0">start_bit</font><font color="4444FF">;</font>
+        <font color="4444FF"><strong>}</strong></font>
+        <font color="#2040a0">start_byte</font><font color="4444FF">+</font><font color="4444FF">+</font><font color="4444FF">;</font>
+        <font color="#2040a0">i</font><font color="4444FF">+</font><font color="4444FF">+</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">xferred</font> <font color="4444FF">&gt;</font> <font color="#2040a0">count</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#444444">/* Zero out (xferred-count) bits from the MSB
+           of the last data byte */</font>
+        <font color="#2040a0">zero_out</font> <font color="4444FF">=</font> <font color="#2040a0">xferred</font> <font color="4444FF">-</font> <font color="#2040a0">count</font><font color="4444FF">;</font>
+        <font color="#2040a0">mask</font> <font color="4444FF">=</font> <font color="#FF0000">1</font> <font color="4444FF">&lt;</font><font color="4444FF">&lt;</font> <font color="4444FF">(</font><font color="#FF0000">8</font> <font color="4444FF">-</font> <font color="#2040a0">zero_out</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <strong>for</strong> <font color="4444FF">(</font><font color="#2040a0">l</font><font color="4444FF">=</font><font color="#FF0000">0</font><font color="4444FF">;</font> <font color="#2040a0">l</font> <font color="4444FF">&lt;</font> <font color="#2040a0">zero_out</font><font color="4444FF">;</font> <font color="#2040a0">l</font><font color="4444FF">+</font><font color="4444FF">+</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+            <font color="#2040a0">data</font><font color="4444FF">[</font><font color="#2040a0">i</font><font color="4444FF">-</font><font color="#FF0000">1</font><font color="4444FF">]</font> <font color="4444FF">&amp;</font><font color="4444FF">=</font> ~<font color="#2040a0">mask</font><font color="4444FF">;</font> <font color="#2040a0">mask</font> <font color="4444FF">&lt;</font><font color="4444FF">&lt;</font><font color="4444FF">=</font> <font color="#FF0000">1</font><font color="4444FF">;</font>
+        <font color="4444FF"><strong>}</strong></font>
+        <font color="#2040a0">xferred</font> <font color="4444FF">=</font> <font color="#2040a0">count</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">!</font><font color="#2040a0">xferred</font><font color="4444FF">)</font> <strong>return</strong> <font color="4444FF">-</font><font color="#2040a0">EIO</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Copy the read bits to the user buffer */</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">copy_to_user</font><font color="4444FF">(</font><font color="#2040a0">buf</font>, <font color="4444FF">(</font><strong>void</strong> <font color="4444FF">*</font><font color="4444FF">)</font><font color="#2040a0">data</font>, <font color="4444FF">(</font><font color="4444FF">(</font><font color="#2040a0">xferred</font>/<font color="#FF0000">8</font><font color="4444FF">)</font><font color="4444FF">+</font><font color="#FF0000">1</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF">!</font><font color="4444FF">=</font> <font color="#FF0000">0</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <strong>return</strong> <font color="4444FF">-</font><font color="#2040a0">EIO</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#444444">/* Increment the file pointer by the number of xferred bits */</font>
+    <font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">current_pointer</font> <font color="4444FF">+</font><font color="4444FF">=</font> <font color="#2040a0">xferred</font><font color="4444FF">;</font>
+
+    <strong>return</strong> <font color="#2040a0">xferred</font><font color="4444FF">;</font> <font color="#444444">/* Number of bits read */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/*
+ * Write to a CMOS bank at bit-level granularity. 'count' holds the
+ * number of bits to be written.
+ */</font>
+<font color="#2040a0">ssize_t</font>
+<font color="#2040a0">cmos_write</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">file</font> <font color="4444FF">*</font><font color="#2040a0">file</font>, <strong>const</strong> <strong>char</strong> <font color="4444FF">*</font><font color="#2040a0">buf</font>,
+           <font color="#2040a0">size_t</font> <font color="#2040a0">count</font>, <font color="#2040a0">loff_t</font> <font color="4444FF">*</font><font color="#2040a0">ppos</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>struct</strong> <font color="#2040a0">cmos_dev</font> <font color="4444FF">*</font><font color="#2040a0">cmos_devp</font> <font color="4444FF">=</font> <font color="#2040a0">file</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">private_data</font><font color="4444FF">;</font>
+    <strong>int</strong> <font color="#2040a0">xferred</font> <font color="4444FF">=</font> <font color="#FF0000">0</font>, <font color="#2040a0">i</font> <font color="4444FF">=</font> <font color="#FF0000">0</font>, <font color="#2040a0">l</font>, <font color="#2040a0">end_l</font>, <font color="#2040a0">start_l</font><font color="4444FF">;</font>
+    <strong>char</strong> <font color="4444FF">*</font><font color="#2040a0">kbuf</font>, <font color="#2040a0">tmp_kbuf</font><font color="4444FF">;</font>
+    <strong>unsigned</strong> <strong>char</strong> <font color="#2040a0">tmp_data</font> <font color="4444FF">=</font> <font color="#FF0000">0</font>, <font color="#2040a0">mask</font><font color="4444FF">;</font>
+    <strong>int</strong> <font color="#2040a0">start_byte</font> <font color="4444FF">=</font> <font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">current_pointer</font>/<font color="#FF0000">8</font><font color="4444FF">;</font>
+    <strong>int</strong> <font color="#2040a0">start_bit</font> <font color="4444FF">=</font> <font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">current_pointer</font><font color="4444FF">%</font><font color="#FF0000">8</font><font color="4444FF">;</font>
+
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">current_pointer</font> <font color="4444FF">&gt;</font><font color="4444FF">=</font> <font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">size</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font> <font color="#444444">/* EOF */</font>
+    <font color="4444FF"><strong>}</strong></font>
+    
+    <font color="#444444">/* Adjust count if it edges past the end of the CMOS bank */</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">current_pointer</font> <font color="4444FF">+</font> <font color="#2040a0">count</font> <font color="4444FF">&gt;</font> <font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">size</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#2040a0">count</font> <font color="4444FF">=</font> <font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">size</font> <font color="4444FF">-</font> <font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">current_pointer</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#2040a0">kbuf</font> <font color="4444FF">=</font> <font color="#2040a0">kmalloc</font><font color="4444FF">(</font><font color="4444FF">(</font><font color="#2040a0">count</font>/<font color="#FF0000">8</font><font color="4444FF">)</font><font color="4444FF">+</font><font color="#FF0000">1</font>,<font color="#2040a0">GFP_KERNEL</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">kbuf</font><font color="4444FF">=</font><font color="4444FF">=</font><font color="#2040a0">NULL</font><font color="4444FF">)</font>
+        <strong>return</strong> <font color="4444FF">-</font><font color="#2040a0">ENOMEM</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Get the bits from the user buffer */</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">copy_from_user</font><font color="4444FF">(</font><font color="#2040a0">kbuf</font>,<font color="#2040a0">buf</font>,<font color="4444FF">(</font><font color="#2040a0">count</font>/<font color="#FF0000">8</font><font color="4444FF">)</font><font color="4444FF">+</font><font color="#FF0000">1</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#2040a0">kfree</font><font color="4444FF">(</font><font color="#2040a0">kbuf</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <strong>return</strong> <font color="4444FF">-</font><font color="#2040a0">EFAULT</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#444444">/* Write the specified number of bits to the CMOS bank */</font>
+    <strong>while</strong> <font color="4444FF">(</font><font color="#2040a0">xferred</font> <font color="4444FF">&lt;</font> <font color="#2040a0">count</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#2040a0">tmp_data</font> <font color="4444FF">=</font> <font color="#2040a0">port_data_in</font><font color="4444FF">(</font><font color="#2040a0">start_byte</font>, <font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">bank_number</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#2040a0">mask</font> <font color="4444FF">=</font> <font color="#FF0000">1</font> <font color="4444FF">&lt;</font><font color="4444FF">&lt;</font> <font color="#2040a0">start_bit</font><font color="4444FF">;</font>
+        <font color="#2040a0">end_l</font> <font color="4444FF">=</font> <font color="#FF0000">8</font><font color="4444FF">;</font>
+
+        <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">(</font><font color="#2040a0">count</font><font color="4444FF">-</font><font color="#2040a0">xferred</font><font color="4444FF">)</font> <font color="4444FF">&lt;</font> <font color="4444FF">(</font><font color="#FF0000">8</font> <font color="4444FF">-</font> <font color="#2040a0">start_bit</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+            <font color="#2040a0">end_l</font> <font color="4444FF">=</font> <font color="4444FF">(</font><font color="#2040a0">count</font> <font color="4444FF">-</font> <font color="#2040a0">xferred</font><font color="4444FF">)</font> <font color="4444FF">+</font> <font color="#2040a0">start_bit</font><font color="4444FF">;</font>
+        <font color="4444FF"><strong>}</strong></font>
+
+        <strong>for</strong> <font color="4444FF">(</font><font color="#2040a0">l</font> <font color="4444FF">=</font> <font color="#2040a0">start_bit</font><font color="4444FF">;</font> <font color="#2040a0">l</font> <font color="4444FF">&lt;</font> <font color="#2040a0">end_l</font><font color="4444FF">;</font> <font color="#2040a0">l</font><font color="4444FF">+</font><font color="4444FF">+</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+            <font color="#2040a0">tmp_data</font> <font color="4444FF">&amp;</font><font color="4444FF">=</font> ~<font color="#2040a0">mask</font><font color="4444FF">;</font> <font color="#2040a0">mask</font> <font color="4444FF">&lt;</font><font color="4444FF">&lt;</font><font color="4444FF">=</font> <font color="#FF0000">1</font><font color="4444FF">;</font>
+        <font color="4444FF"><strong>}</strong></font>
+
+        <font color="#2040a0">tmp_kbuf</font> <font color="4444FF">=</font> <font color="#2040a0">kbuf</font><font color="4444FF">[</font><font color="#2040a0">i</font><font color="4444FF">]</font><font color="4444FF">;</font>
+        <font color="#2040a0">mask</font> <font color="4444FF">=</font> <font color="#FF0000">1</font> <font color="4444FF">&lt;</font><font color="4444FF">&lt;</font> <font color="#2040a0">end_l</font><font color="4444FF">;</font>
+        <strong>for</strong> <font color="4444FF">(</font><font color="#2040a0">l</font> <font color="4444FF">=</font> <font color="#2040a0">end_l</font><font color="4444FF">;</font> <font color="#2040a0">l</font> <font color="4444FF">&lt;</font> <font color="#FF0000">8</font><font color="4444FF">;</font> <font color="#2040a0">l</font><font color="4444FF">+</font><font color="4444FF">+</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+            <font color="#2040a0">tmp_kbuf</font> <font color="4444FF">&amp;</font><font color="4444FF">=</font> ~<font color="#2040a0">mask</font><font color="4444FF">;</font>
+            <font color="#2040a0">mask</font> <font color="4444FF">&lt;</font><font color="4444FF">&lt;</font><font color="4444FF">=</font> <font color="#FF0000">1</font><font color="4444FF">;</font>
+        <font color="4444FF"><strong>}</strong></font>
+
+        <font color="#2040a0">port_data_out</font><font color="4444FF">(</font><font color="#2040a0">start_byte</font>,
+                      <font color="#2040a0">tmp_data</font> <font color="4444FF">|</font><font color="4444FF">(</font><font color="#2040a0">tmp_kbuf</font> <font color="4444FF">&lt;</font><font color="4444FF">&lt;</font> <font color="#2040a0">start_bit</font><font color="4444FF">)</font>,
+                      <font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">bank_number</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#2040a0">xferred</font> <font color="4444FF">+</font><font color="4444FF">=</font> <font color="4444FF">(</font><font color="#2040a0">end_l</font> <font color="4444FF">-</font> <font color="#2040a0">start_bit</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+        <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">(</font><font color="#2040a0">xferred</font> <font color="4444FF">&lt;</font> <font color="#2040a0">count</font><font color="4444FF">)</font> <font color="4444FF">&amp;</font><font color="4444FF">&amp;</font> <font color="4444FF">(</font><font color="#2040a0">start_bit</font><font color="4444FF">)</font> <font color="4444FF">&amp;</font><font color="4444FF">&amp;</font>
+            <font color="4444FF">(</font><font color="#2040a0">count</font> <font color="4444FF">+</font> <font color="#2040a0">start_bit</font> <font color="4444FF">&gt;</font> <font color="#FF0000">8</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+            <font color="#2040a0">tmp_data</font> <font color="4444FF">=</font> <font color="#2040a0">port_data_in</font><font color="4444FF">(</font><font color="#2040a0">start_byte</font><font color="4444FF">+</font><font color="#FF0000">1</font>,
+                                    <font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">bank_number</font><font color="4444FF">)</font><font color="4444FF">;</font>
+            
+            <font color="#2040a0">start_l</font> <font color="4444FF">=</font> <font color="4444FF">(</font><font color="4444FF">(</font><font color="#2040a0">start_bit</font> <font color="4444FF">+</font> <font color="#2040a0">count</font><font color="4444FF">)</font> <font color="4444FF">%</font> <font color="#FF0000">8</font><font color="4444FF">)</font><font color="4444FF">;</font>
+            <font color="#2040a0">mask</font> <font color="4444FF">=</font> <font color="#FF0000">1</font> <font color="4444FF">&lt;</font><font color="4444FF">&lt;</font> <font color="#2040a0">start_l</font><font color="4444FF">;</font>
+            <strong>for</strong> <font color="4444FF">(</font><font color="#2040a0">l</font><font color="4444FF">=</font><font color="#FF0000">0</font><font color="4444FF">;</font> <font color="#2040a0">l</font> <font color="4444FF">&lt;</font> <font color="#2040a0">start_l</font><font color="4444FF">;</font> <font color="#2040a0">l</font><font color="4444FF">+</font><font color="4444FF">+</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+                <font color="#2040a0">mask</font> <font color="4444FF">&gt;</font><font color="4444FF">&gt;</font><font color="4444FF">=</font> <font color="#FF0000">1</font><font color="4444FF">;</font>
+                <font color="#2040a0">tmp_data</font> <font color="4444FF">&amp;</font><font color="4444FF">=</font> ~<font color="#2040a0">mask</font><font color="4444FF">;</font>
+            <font color="4444FF"><strong>}</strong></font>
+            <font color="#2040a0">port_data_out</font><font color="4444FF">(</font><font color="4444FF">(</font><font color="#2040a0">start_byte</font><font color="4444FF">+</font><font color="#FF0000">1</font><font color="4444FF">)</font>,
+                          <font color="#2040a0">tmp_data</font> <font color="4444FF">|</font><font color="4444FF">(</font><font color="#2040a0">kbuf</font><font color="4444FF">[</font><font color="#2040a0">i</font><font color="4444FF">]</font> <font color="4444FF">&gt;</font><font color="4444FF">&gt;</font> <font color="4444FF">(</font><font color="#FF0000">8</font> <font color="4444FF">-</font> <font color="#2040a0">start_bit</font><font color="4444FF">)</font><font color="4444FF">)</font>,
+                          <font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">bank_number</font><font color="4444FF">)</font><font color="4444FF">;</font>
+            <font color="#2040a0">xferred</font> <font color="4444FF">+</font><font color="4444FF">=</font> <font color="#2040a0">start_l</font><font color="4444FF">;</font>
+        <font color="4444FF"><strong>}</strong></font>
+        <font color="#2040a0">start_byte</font><font color="4444FF">+</font><font color="4444FF">+</font><font color="4444FF">;</font>
+        <font color="#2040a0">i</font><font color="4444FF">+</font><font color="4444FF">+</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">!</font><font color="#2040a0">xferred</font><font color="4444FF">)</font> <strong>return</strong> <font color="4444FF">-</font><font color="#2040a0">EIO</font><font color="4444FF">;</font>
+    <font color="#444444">/* Push the offset pointer forward */</font>
+    <font color="#2040a0">cmos_devp</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">current_pointer</font> <font color="4444FF">+</font><font color="4444FF">=</font> <font color="#2040a0">xferred</font><font color="4444FF">;</font>
+
+    <strong>return</strong> <font color="#2040a0">xferred</font><font color="4444FF">;</font> <font color="#444444">/* Return the number of written bits */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/*
+ * Read data from specified CMOS bank
+ */</font>
+<strong>unsigned</strong> <strong>char</strong>
+<font color="#2040a0">port_data_in</font><font color="4444FF">(</font><strong>unsigned</strong> <strong>char</strong> <font color="#2040a0">offset</font>, <strong>int</strong> <font color="#2040a0">bank</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>unsigned</strong> <strong>char</strong> <font color="#2040a0">data</font><font color="4444FF">;</font>
+
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">unlikely</font><font color="4444FF">(</font><font color="#2040a0">bank</font> <font color="4444FF">&gt;</font><font color="4444FF">=</font> <font color="#2040a0">NUM_CMOS_BANKS</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#2040a0">printk</font><font color="4444FF">(</font><font color="#008000">&quot;Unknown CMOS Bank<font color="#77dd77">\n</font>&quot;</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font> <strong>else</strong> <font color="4444FF"><strong>{</strong></font>
+        <font color="#2040a0">outb</font><font color="4444FF">(</font><font color="#2040a0">offset</font>, <font color="#2040a0">addrports</font><font color="4444FF">[</font><font color="#2040a0">bank</font><font color="4444FF">]</font><font color="4444FF">)</font><font color="4444FF">;</font> <font color="#444444">/* Read a byte */</font>
+        <font color="#2040a0">data</font> <font color="4444FF">=</font> <font color="#2040a0">inb</font><font color="4444FF">(</font><font color="#2040a0">dataports</font><font color="4444FF">[</font><font color="#2040a0">bank</font><font color="4444FF">]</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <strong>return</strong> <font color="#2040a0">data</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/*
+ * Write data to specified CMOS bank
+ */</font>
+<strong>void</strong>
+<font color="#2040a0">port_data_out</font><font color="4444FF">(</font><strong>unsigned</strong> <strong>char</strong> <font color="#2040a0">offset</font>, <strong>unsigned</strong> <strong>char</strong> <font color="#2040a0">data</font>,
+              <strong>int</strong> <font color="#2040a0">bank</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">unlikely</font><font color="4444FF">(</font><font color="#2040a0">bank</font> <font color="4444FF">&gt;</font><font color="4444FF">=</font> <font color="#2040a0">NUM_CMOS_BANKS</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#2040a0">printk</font><font color="4444FF">(</font><font color="#008000">&quot;Unknown CMOS Bank<font color="#77dd77">\n</font>&quot;</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <strong>return</strong><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font> <strong>else</strong> <font color="4444FF"><strong>{</strong></font>
+        <font color="#2040a0">outb</font><font color="4444FF">(</font><font color="#2040a0">offset</font>, <font color="#2040a0">addrports</font><font color="4444FF">[</font><font color="#2040a0">bank</font><font color="4444FF">]</font><font color="4444FF">)</font><font color="4444FF">;</font> <font color="#444444">/* Output a byte */</font>
+        <font color="#2040a0">outb</font><font color="4444FF">(</font><font color="#2040a0">data</font>, <font color="#2040a0">dataports</font><font color="4444FF">[</font><font color="#2040a0">bank</font><font color="4444FF">]</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <strong>return</strong><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+ 
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

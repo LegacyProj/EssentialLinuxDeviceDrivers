@@ -1,0 +1,318 @@
+<html>
+<head>
+  <title>Listing 12.2</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="0000ff"><strong>#include <font color="#008000">&lt;linux/fb.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;linux/dma-mapping.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;linux/platform_device.h&gt;</font></strong></font>
+
+<font color="#444444">/* Address map of LCD controller registers */</font>
+<font color="0000ff"><strong>#define LCD_CONTROLLER_BASE 0x01000D00</strong></font>
+<font color="0000ff"><strong>#define SIZE_REG     (*(volatile u32*)(LCD_CONTROLLER_BASE))</strong></font>
+<font color="0000ff"><strong>#define HSYNC_REG    (*(volatile u32*)(LCD_CONTROLLER_BASE + 4))</strong></font>
+<font color="0000ff"><strong>#define VSYNC_REG    (*(volatile u32*)(LCD_CONTROLLER_BASE + 8))</strong></font>
+<font color="0000ff"><strong>#define CONF_REG     (*(volatile u32*)(LCD_CONTROLLER_BASE + 12))</strong></font>
+<font color="0000ff"><strong>#define CTRL_REG     (*(volatile u32*)(LCD_CONTROLLER_BASE + 16))</strong></font>
+<font color="0000ff"><strong>#define DMA_REG      (*(volatile u32*)(LCD_CONTROLLER_BASE + 20))</strong></font>
+<font color="0000ff"><strong>#define STATUS_REG   (*(volatile u32 *)(LCD_CONTROLLER_BASE + 24))</strong></font>
+<font color="0000ff"><strong>#define CONTRAST_REG (*(volatile u32 *)(LCD_CONTROLLER_BASE + 28))</strong></font>
+<font color="0000ff"><strong>#define LCD_CONTROLLER_SIZE 32</strong></font>
+
+<font color="#444444">/* Resources for the LCD controller platform device */</font>
+<strong>static</strong> <strong>struct</strong> <font color="#2040a0">resource</font> <font color="#2040a0">myfb_resources</font><font color="4444FF">[</font><font color="4444FF">]</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font>
+    <font color="4444FF">[</font><font color="#FF0000">0</font><font color="4444FF">]</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font>
+        .<font color="#2040a0">start</font> <font color="4444FF">=</font> <font color="#2040a0">LCD_CONTROLLER_BASE</font>,
+        .<font color="#2040a0">end</font> <font color="4444FF">=</font> <font color="#2040a0">LCD_CONTROLLER_SIZE</font>,
+        .<font color="#2040a0">flags</font> <font color="4444FF">=</font> <font color="#2040a0">IORESOURCE_MEM</font>,
+    <font color="4444FF"><strong>}</strong></font>,
+<font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+
+<font color="#444444">/* Platform device definition */</font>
+<strong>static</strong> <strong>struct</strong> <font color="#2040a0">platform_device</font> <font color="#2040a0">myfb_device</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font>
+    .<font color="#2040a0">name</font> <font color="4444FF">=</font> <font color="#008000">&quot;myfb&quot;</font>,
+    .<font color="#2040a0">id</font> <font color="4444FF">=</font> <font color="#FF0000">0</font>,
+    .<font color="#2040a0">dev</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font>
+        .<font color="#2040a0">coherent_dma_mask</font> <font color="4444FF">=</font> <font color="#FF0000">0xffffffff</font>,
+    <font color="4444FF"><strong>}</strong></font>,
+    .<font color="#2040a0">num_resources</font> <font color="4444FF">=</font> <font color="#2040a0">ARRAY_SIZE</font><font color="4444FF">(</font><font color="#2040a0">myfb_resources</font><font color="4444FF">)</font>,
+    .<font color="#2040a0">resource</font> <font color="4444FF">=</font> <font color="#2040a0">myfb_resources</font>,
+<font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+
+<font color="#444444">/* Set LCD controller parameters */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">myfb_set_par</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">fb_info</font> <font color="4444FF">*</font><font color="#2040a0">info</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>unsigned</strong> <strong>long</strong> <font color="#2040a0">adjusted_fb_start</font><font color="4444FF">;</font>
+    <strong>struct</strong> <font color="#2040a0">fb_var_screeninfo</font> <font color="4444FF">*</font><font color="#2040a0">var</font> <font color="4444FF">=</font> <font color="4444FF">&amp;</font><font color="#2040a0">info</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">var</font><font color="4444FF">;</font>
+    <strong>struct</strong> <font color="#2040a0">fb_fix_screeninfo</font> <font color="4444FF">*</font><font color="#2040a0">fix</font> <font color="4444FF">=</font> <font color="4444FF">&amp;</font><font color="#2040a0">info</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">fix</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Top 16 bits of HSYNC_REG hold HSYNC duration, next 8 contain
+       the left margin, while the bottom 8 house the right margin */</font>
+    <font color="#2040a0">HSYNC_REG</font> <font color="4444FF">=</font> <font color="4444FF">(</font><font color="#2040a0">var</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">hsync_len</font> <font color="4444FF">&lt;</font><font color="4444FF">&lt;</font> <font color="#FF0000">16</font><font color="4444FF">)</font> <font color="4444FF">|</font>
+        <font color="4444FF">(</font><font color="#2040a0">var</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">left_margin</font> <font color="4444FF">&lt;</font><font color="4444FF">&lt;</font> <font color="#FF0000">8</font><font color="4444FF">)</font><font color="4444FF">|</font>
+        <font color="4444FF">(</font><font color="#2040a0">var</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">right_margin</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Top 16 bits of VSYNC_REG hold VSYNC duration, next 8 contain
+       the upper margin, while the bottom 8 house the lower margin */</font>
+    <font color="#2040a0">VSYNC_REG</font> <font color="4444FF">=</font> <font color="4444FF">(</font><font color="#2040a0">var</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">vsync_len</font> <font color="4444FF">&lt;</font><font color="4444FF">&lt;</font> <font color="#FF0000">16</font><font color="4444FF">)</font> <font color="4444FF">|</font>
+        <font color="4444FF">(</font><font color="#2040a0">var</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">upper_margin</font> <font color="4444FF">&lt;</font><font color="4444FF">&lt;</font> <font color="#FF0000">8</font><font color="4444FF">)</font><font color="4444FF">|</font>
+        <font color="4444FF">(</font><font color="#2040a0">var</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">lower_margin</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Top 16 bits of SIZE_REG hold xres, bottom 16 hold yres */</font>
+    <font color="#2040a0">SIZE_REG</font> <font color="4444FF">=</font> <font color="4444FF">(</font><font color="#2040a0">var</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">xres</font> <font color="4444FF">&lt;</font><font color="4444FF">&lt;</font> <font color="#FF0000">16</font><font color="4444FF">)</font> <font color="4444FF">|</font> <font color="4444FF">(</font><font color="#2040a0">var</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">yres</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Set bits per pixel, pixel polarity, clock dividers for
+       the pixclock, and color/monochrome mode in CONF_REG */</font>
+
+    <font color="#444444">/* ... */</font>
+
+    <font color="#444444">/* Fill DMA_REG with the start address of the frame buffer
+       coherently allocated from myfb_probe(). Adjust this address
+       to account for any offset to the start of screen area */</font>
+    <font color="#2040a0">adjusted_fb_start</font> <font color="4444FF">=</font> <font color="#2040a0">fix</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">smem_start</font> <font color="4444FF">+</font>
+        <font color="4444FF">(</font><font color="#2040a0">var</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">yoffset</font> <font color="4444FF">*</font> <font color="#2040a0">var</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">xres_virtual</font> <font color="4444FF">+</font> <font color="#2040a0">var</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">xoffset</font><font color="4444FF">)</font> <font color="4444FF">*</font>
+        <font color="4444FF">(</font><font color="#2040a0">var</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">bits_per_pixel</font><font color="4444FF">)</font> / <font color="#FF0000">8</font><font color="4444FF">;</font>
+    <font color="#2040a0">__raw_writel</font><font color="4444FF">(</font><font color="#2040a0">adjusted_fb_start</font>, <font color="4444FF">(</font><strong>unsigned</strong> <strong>long</strong> <font color="4444FF">*</font><font color="4444FF">)</font><font color="#2040a0">DMA_REG</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Set the DMA burst length and watermark sizes in DMA_REG */</font>
+    <font color="#444444">/* ... */</font>
+
+    <font color="#444444">/* Set fixed information */</font>
+    <font color="#2040a0">fix</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">accel</font> <font color="4444FF">=</font> <font color="#2040a0">FB_ACCEL_NONE</font><font color="4444FF">;</font> <font color="#444444">/* No hardware acceleration */</font>
+    <font color="#2040a0">fix</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">visual</font> <font color="4444FF">=</font> <font color="#2040a0">FB_VISUAL_TRUECOLOR</font><font color="4444FF">;</font> <font color="#444444">/* True color mode */</font>
+    <font color="#2040a0">fix</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">line_length</font> <font color="4444FF">=</font> <font color="#2040a0">var</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">xres_virtual</font> <font color="4444FF">*</font> <font color="#2040a0">var</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">bits_per_pixel</font>/<font color="#FF0000">8</font><font color="4444FF">;</font>
+
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Enable LCD controller */</font>
+<strong>static</strong> <strong>void</strong>
+<font color="#2040a0">myfb_enable_controller</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">fb_info</font> <font color="4444FF">*</font><font color="#2040a0">info</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* Enable LCD controller, start DMA, enable clocks and power
+       by writing to CTRL_REG */</font>
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Disable LCD controller */</font>
+<strong>static</strong> <strong>void</strong>
+<font color="#2040a0">myfb_disable_controller</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">fb_info</font> <font color="4444FF">*</font><font color="#2040a0">info</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* Disable LCD controller, stop DMA, disable clocks and power
+       by writing to CTRL_REG */</font>
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Sanity check and adjustment of variables */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">myfb_check_var</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">fb_var_screeninfo</font> <font color="4444FF">*</font><font color="#2040a0">var</font>, <strong>struct</strong> <font color="#2040a0">fb_info</font> <font color="4444FF">*</font><font color="#2040a0">info</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* Round up to the minimum resolution supported by
+       the LCD controller */</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">var</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">xres</font> <font color="4444FF">&lt;</font> <font color="#FF0000">64</font><font color="4444FF">)</font> <font color="#2040a0">var</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">xres</font> <font color="4444FF">=</font> <font color="#FF0000">64</font><font color="4444FF">;</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">var</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">yres</font> <font color="4444FF">&lt;</font> <font color="#FF0000">64</font><font color="4444FF">)</font> <font color="#2040a0">var</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">yres</font> <font color="4444FF">=</font> <font color="#FF0000">64</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* ... */</font>
+
+    <font color="#444444">/* This hardware supports the RGB565 color format.
+       See the section &quot;Color Modes&quot; for more details */</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">var</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">bits_per_pixel</font> <font color="4444FF">=</font><font color="4444FF">=</font> <font color="#FF0000">16</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#444444">/* Encoding Red */</font>
+        <font color="#2040a0">var</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">red</font>.<font color="#2040a0">length</font> <font color="4444FF">=</font> <font color="#FF0000">5</font><font color="4444FF">;</font>
+        <font color="#2040a0">var</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">red</font>.<font color="#2040a0">offset</font> <font color="4444FF">=</font> <font color="#FF0000">11</font><font color="4444FF">;</font>
+        <font color="#444444">/* Encoding Green */</font>
+        <font color="#2040a0">var</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">green</font>.<font color="#2040a0">length</font> <font color="4444FF">=</font> <font color="#FF0000">6</font><font color="4444FF">;</font>
+        <font color="#2040a0">var</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">green</font>.<font color="#2040a0">offset</font> <font color="4444FF">=</font> <font color="#FF0000">5</font><font color="4444FF">;</font>
+        <font color="#444444">/* Encoding Blue */</font>
+        <font color="#2040a0">var</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">blue</font>.<font color="#2040a0">length</font> <font color="4444FF">=</font> <font color="#FF0000">5</font><font color="4444FF">;</font>
+        <font color="#2040a0">var</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">blue</font>.<font color="#2040a0">offset</font> <font color="4444FF">=</font> <font color="#FF0000">0</font><font color="4444FF">;</font>
+        <font color="#444444">/* No hardware support for alpha blending */</font>
+        <font color="#2040a0">var</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">transp</font>.<font color="#2040a0">length</font> <font color="4444FF">=</font> <font color="#FF0000">0</font><font color="4444FF">;</font>
+        <font color="#2040a0">var</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">transp</font>.<font color="#2040a0">offset</font> <font color="4444FF">=</font> <font color="#FF0000">0</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Blank/unblank screen */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">myfb_blank</font><font color="4444FF">(</font><strong>int</strong> <font color="#2040a0">blank_mode</font>, <strong>struct</strong> <font color="#2040a0">fb_info</font> <font color="4444FF">*</font><font color="#2040a0">info</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>switch</strong> <font color="4444FF">(</font><font color="#2040a0">blank_mode</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+    <strong>case</strong> <font color="#2040a0">FB_BLANK_POWERDOWN</font><font color="4444FF">:</font>
+    <strong>case</strong> <font color="#2040a0">FB_BLANK_VSYNC_SUSPEND</font><font color="4444FF">:</font>
+    <strong>case</strong> <font color="#2040a0">FB_BLANK_HSYNC_SUSPEND</font><font color="4444FF">:</font>
+    <strong>case</strong> <font color="#2040a0">FB_BLANK_NORMAL</font><font color="4444FF">:</font>
+        <font color="#2040a0">myfb_disable_controller</font><font color="4444FF">(</font><font color="#2040a0">info</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <strong>break</strong><font color="4444FF">;</font>
+    <strong>case</strong> <font color="#2040a0">FB_BLANK_UNBLANK</font><font color="4444FF">:</font>
+        <font color="#2040a0">myfb_enable_controller</font><font color="4444FF">(</font><font color="#2040a0">info</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <strong>break</strong><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Configure pseudo color palette map */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">myfb_setcolreg</font><font color="4444FF">(</font><font color="#2040a0">u_int</font> <font color="#2040a0">color_index</font>, <font color="#2040a0">u_int</font> <font color="#2040a0">red</font>, <font color="#2040a0">u_int</font> <font color="#2040a0">green</font>,
+               <font color="#2040a0">u_int</font> <font color="#2040a0">blue</font>, <font color="#2040a0">u_int</font> <font color="#2040a0">transp</font>, <strong>struct</strong> <font color="#2040a0">fb_info</font> <font color="4444FF">*</font><font color="#2040a0">info</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">info</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">fix</font>.<font color="#2040a0">visual</font> <font color="4444FF">=</font><font color="4444FF">=</font> <font color="#2040a0">FB_VISUAL_TRUECOLOR</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#444444">/* Do any required translations to convert red, blue, green and
+           transp, to values that can be directly fed to the hardware */</font>
+        <font color="#444444">/* ... */</font>
+        <font color="4444FF">(</font><font color="4444FF">(</font><font color="#2040a0">u32</font> <font color="4444FF">*</font><font color="4444FF">)</font><font color="4444FF">(</font><font color="#2040a0">info</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">pseudo_palette</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">[</font><font color="#2040a0">color_index</font><font color="4444FF">]</font> <font color="4444FF">=</font>
+            <font color="4444FF">(</font><font color="#2040a0">red</font> <font color="4444FF">&lt;</font><font color="4444FF">&lt;</font> <font color="#2040a0">info</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">var</font>.<font color="#2040a0">red</font>.<font color="#2040a0">offset</font><font color="4444FF">)</font> <font color="4444FF">|</font>
+            <font color="4444FF">(</font><font color="#2040a0">green</font> <font color="4444FF">&lt;</font><font color="4444FF">&lt;</font> <font color="#2040a0">info</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">var</font>.<font color="#2040a0">green</font>.<font color="#2040a0">offset</font><font color="4444FF">)</font> <font color="4444FF">|</font>
+            <font color="4444FF">(</font><font color="#2040a0">blue</font> <font color="4444FF">&lt;</font><font color="4444FF">&lt;</font> <font color="#2040a0">info</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">var</font>.<font color="#2040a0">blue</font>.<font color="#2040a0">offset</font><font color="4444FF">)</font> <font color="4444FF">|</font>
+            <font color="4444FF">(</font><font color="#2040a0">transp</font> <font color="4444FF">&lt;</font><font color="4444FF">&lt;</font> <font color="#2040a0">info</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">var</font>.<font color="#2040a0">transp</font>.<font color="#2040a0">offset</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Device-specific ioctl definition */</font>
+<font color="0000ff"><strong>#define MYFB_SET_BRIGHTNESS _IOW('M', 3, int8_t)</strong></font>
+
+<font color="#444444">/* Device-specific ioctl */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">myfb_ioctl</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">fb_info</font> <font color="4444FF">*</font><font color="#2040a0">info</font>, <strong>unsigned</strong> <strong>int</strong> <font color="#2040a0">cmd</font>,
+           <strong>unsigned</strong> <strong>long</strong> <font color="#2040a0">arg</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#2040a0">u32</font> <font color="#2040a0">blevel</font> <font color="4444FF">;</font>
+    <strong>switch</strong> <font color="4444FF">(</font><font color="#2040a0">cmd</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+    <strong>case</strong> <font color="#2040a0">MYFB_SET_BRIGHTNESS</font> <font color="4444FF">:</font>
+        <font color="#2040a0">copy_from_user</font><font color="4444FF">(</font><font color="4444FF">(</font><strong>void</strong> <font color="4444FF">*</font><font color="4444FF">)</font><font color="4444FF">&amp;</font><font color="#2040a0">blevel</font>, <font color="4444FF">(</font><strong>void</strong> <font color="4444FF">*</font><font color="4444FF">)</font><font color="#2040a0">arg</font>,
+                       <strong>sizeof</strong><font color="4444FF">(</font><font color="#2040a0">blevel</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF">;</font>
+        <font color="#444444">/* Write blevel to CONTRAST_REG */</font>
+        <font color="#444444">/* ... */</font>
+        <strong>break</strong><font color="4444FF">;</font>
+    <strong>default</strong><font color="4444FF">:</font>
+        <strong>return</strong> <font color="4444FF">-</font><font color="#2040a0">EINVAL</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* The fb_ops structure */</font>
+<strong>static</strong> <strong>struct</strong> <font color="#2040a0">fb_ops</font> <font color="#2040a0">myfb_ops</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font>
+    .<font color="#2040a0">owner</font> <font color="4444FF">=</font> <font color="#2040a0">THIS_MODULE</font>,
+    .<font color="#2040a0">fb_check_var</font> <font color="4444FF">=</font> <font color="#2040a0">myfb_check_var</font>,<font color="#444444">/* Sanity check */</font>
+    .<font color="#2040a0">fb_set_par</font> <font color="4444FF">=</font> <font color="#2040a0">myfb_set_par</font>,    <font color="#444444">/* Program controller registers */</font>
+    .<font color="#2040a0">fb_setcolreg</font> <font color="4444FF">=</font> <font color="#2040a0">myfb_setcolreg</font>,<font color="#444444">/* Set color map */</font>
+    .<font color="#2040a0">fb_blank</font> <font color="4444FF">=</font> <font color="#2040a0">myfb_blank</font>,        <font color="#444444">/* Blank/unblank display */</font>
+    .<font color="#2040a0">fb_fillrect</font> <font color="4444FF">=</font> <font color="#2040a0">cfb_fillrect</font>,   <font color="#444444">/* Generic function to fill
+                                      rectangle */</font>
+    .<font color="#2040a0">fb_copyarea</font> <font color="4444FF">=</font> <font color="#2040a0">cfb_copyarea</font>,   <font color="#444444">/* Generic function to copy area */</font>
+    .<font color="#2040a0">fb_imageblit</font> <font color="4444FF">=</font> <font color="#2040a0">cfb_imageblit</font>, <font color="#444444">/* Generic function to draw */</font>
+    .<font color="#2040a0">fb_ioctl</font> <font color="4444FF">=</font> <font color="#2040a0">myfb_ioctl</font>,        <font color="#444444">/* Device-specific ioctl */</font>
+<font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+
+<font color="#444444">/* Platform driver's probe() routine */</font>
+<strong>static</strong> <strong>int</strong> <font color="#2040a0">__init</font>
+<font color="#2040a0">myfb_probe</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">platform_device</font> <font color="4444FF">*</font><font color="#2040a0">pdev</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>struct</strong> <font color="#2040a0">fb_info</font> <font color="4444FF">*</font><font color="#2040a0">info</font><font color="4444FF">;</font>
+    <strong>struct</strong> <font color="#2040a0">resource</font> <font color="4444FF">*</font><font color="#2040a0">res</font><font color="4444FF">;</font>
+    <font color="#2040a0">info</font> <font color="4444FF">=</font> <font color="#2040a0">framebuffer_alloc</font><font color="4444FF">(</font><font color="#FF0000">0</font>, <font color="4444FF">&amp;</font><font color="#2040a0">pdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dev</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* ... */</font>
+
+    <font color="#444444">/* Obtain the associated resource defined while registering the
+       corresponding platform_device */</font>
+    <font color="#2040a0">res</font> <font color="4444FF">=</font> <font color="#2040a0">platform_get_resource</font><font color="4444FF">(</font><font color="#2040a0">pdev</font>, <font color="#2040a0">IORESOURCE_MEM</font>, <font color="#FF0000">0</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Get the kernel's sanction for using the I/O memory chunk
+       starting from LCD_CONTROLLER_BASE and having a size of
+       LCD_CONTROLLER_SIZE bytes */</font>
+    <font color="#2040a0">res</font> <font color="4444FF">=</font> <font color="#2040a0">request_mem_region</font><font color="4444FF">(</font><font color="#2040a0">res</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">start</font>, <font color="#2040a0">res</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">end</font> <font color="4444FF">-</font> <font color="#2040a0">res</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">start</font> <font color="4444FF">+</font> <font color="#FF0000">1</font>,
+                             <font color="#2040a0">pdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">name</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Fill the fb_info structure with fixed (info-&gt;fix) and variable
+       (info-&gt;var) values such as frame buffer length, xres, yres,
+       bits_per_pixel, fbops, cmap, etc */</font>
+    <font color="#2040a0">initialize_fb_info</font><font color="4444FF">(</font><font color="#2040a0">info</font>, <font color="#2040a0">pdev</font><font color="4444FF">)</font><font color="4444FF">;</font> <font color="#444444">/* Not expanded */</font>
+    <font color="#2040a0">info</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">fbops</font> <font color="4444FF">=</font> <font color="4444FF">&amp;</font><font color="#2040a0">myfb_ops</font><font color="4444FF">;</font>
+    <font color="#2040a0">fb_alloc_cmap</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">info</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">cmap</font>, <font color="#FF0000">16</font>, <font color="#FF0000">0</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* DMA-map the frame buffer memory coherently. info-&gt;screen_base
+       holds the CPU address of the mapped buffer,
+       info-&gt;fix.smem_start carries the associated hardware address */</font>
+    <font color="#2040a0">info</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">screen_base</font> <font color="4444FF">=</font> <font color="#2040a0">dma_alloc_coherent</font><font color="4444FF">(</font><font color="#FF0000">0</font>, <font color="#2040a0">info</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">fix</font>.<font color="#2040a0">smem_len</font>,
+                                           <font color="4444FF">(</font><font color="#2040a0">dma_addr_t</font> <font color="4444FF">*</font><font color="4444FF">)</font><font color="4444FF">&amp;</font><font color="#2040a0">info</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">fix</font>.<font color="#2040a0">smem_start</font>,
+                                           <font color="#2040a0">GFP_DMA</font> <font color="4444FF">|</font> <font color="#2040a0">GFP_KERNEL</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Set the information in info-&gt;var to the appropriate
+       LCD controller registers */</font>
+    <font color="#2040a0">myfb_set_par</font><font color="4444FF">(</font><font color="#2040a0">info</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Register with the frame buffer core */</font>
+    <font color="#2040a0">register_framebuffer</font><font color="4444FF">(</font><font color="#2040a0">info</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Platform driver's remove() routine */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">myfb_remove</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">platform_device</font> <font color="4444FF">*</font><font color="#2040a0">pdev</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>struct</strong> <font color="#2040a0">fb_info</font> <font color="4444FF">*</font><font color="#2040a0">info</font> <font color="4444FF">=</font> <font color="#2040a0">platform_get_drvdata</font><font color="4444FF">(</font><font color="#2040a0">pdev</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>struct</strong> <font color="#2040a0">resource</font> <font color="4444FF">*</font><font color="#2040a0">res</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Disable screen refresh, turn off DMA,.. */</font>
+    <font color="#2040a0">myfb_disable_controller</font><font color="4444FF">(</font><font color="#2040a0">info</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Unregister frame buffer driver */</font>
+    <font color="#2040a0">unregister_framebuffer</font><font color="4444FF">(</font><font color="#2040a0">info</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Deallocate color map */</font>
+    <font color="#2040a0">fb_dealloc_cmap</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">info</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">cmap</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">kfree</font><font color="4444FF">(</font><font color="#2040a0">info</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">pseudo_palette</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Reverse of framebuffer_alloc() */</font>
+    <font color="#2040a0">framebuffer_release</font><font color="4444FF">(</font><font color="#2040a0">info</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Release memory region */</font>
+    <font color="#2040a0">res</font> <font color="4444FF">=</font> <font color="#2040a0">platform_get_resource</font><font color="4444FF">(</font><font color="#2040a0">pdev</font>, <font color="#2040a0">IORESOURCE_MEM</font>, <font color="#FF0000">0</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">release_mem_region</font><font color="4444FF">(</font><font color="#2040a0">res</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">start</font>, <font color="#2040a0">res</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">end</font> <font color="4444FF">-</font> <font color="#2040a0">res</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">start</font> <font color="4444FF">+</font> <font color="#FF0000">1</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">platform_set_drvdata</font><font color="4444FF">(</font><font color="#2040a0">pdev</font>, <font color="#2040a0">NULL</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* The platform driver structure */</font>
+<strong>static</strong> <strong>struct</strong> <font color="#2040a0">platform_driver</font> <font color="#2040a0">myfb_driver</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font>
+    .<font color="#2040a0">probe</font> <font color="4444FF">=</font> <font color="#2040a0">myfb_probe</font>,
+    .<font color="#2040a0">remove</font> <font color="4444FF">=</font> <font color="#2040a0">myfb_remove</font>,
+    .<font color="#2040a0">driver</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font>
+        .<font color="#2040a0">name</font> <font color="4444FF">=</font> <font color="#008000">&quot;myfb&quot;</font>,
+    <font color="4444FF"><strong>}</strong></font>,
+<font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+
+<font color="#444444">/* Module Initialization */</font>
+<strong>int</strong> <font color="#2040a0">__init</font>
+<font color="#2040a0">myfb_init</font><font color="4444FF">(</font><strong>void</strong><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#2040a0">platform_device_add</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">myfb_device</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>return</strong> <font color="#2040a0">platform_driver_register</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">myfb_driver</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Module Exit */</font>
+<strong>void</strong> <font color="#2040a0">__exit</font>
+<font color="#2040a0">myfb_exit</font><font color="4444FF">(</font><strong>void</strong><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#2040a0">platform_driver_unregister</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">myfb_driver</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">platform_device_unregister</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">myfb_device</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#2040a0">module_init</font><font color="4444FF">(</font><font color="#2040a0">myfb_init</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="#2040a0">module_exit</font><font color="4444FF">(</font><font color="#2040a0">myfb_exit</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+ 
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

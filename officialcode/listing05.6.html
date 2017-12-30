@@ -1,0 +1,150 @@
+<html>
+<head>
+  <title>Listing 5.6</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="0000ff"><strong>#include <font color="#008000">&lt;linux/fs.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;linux/cdev.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;linux/parport.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;asm/uaccess.h&gt;</font></strong></font>
+<font color="0000ff"><strong>#include <font color="#008000">&lt;linux/platform_device.h&gt;</font></strong></font>
+
+<font color="0000ff"><strong>#define DEVICE_NAME <font color="#008000">&quot;led&quot;</font></strong></font>
+
+<strong>static</strong> <font color="#2040a0">dev_t</font> <font color="#2040a0">dev_number</font><font color="4444FF">;</font>        <font color="#444444">/* Allotted device number */</font>
+<strong>static</strong> <strong>struct</strong> <font color="#2040a0">class</font> <font color="4444FF">*</font><font color="#2040a0">led_class</font><font color="4444FF">;</font> <font color="#444444">/* Class to which this device
+                                   belongs */</font>
+<strong>struct</strong> <font color="#2040a0">cdev</font> <font color="#2040a0">led_cdev</font><font color="4444FF">;</font>           <font color="#444444">/* Associated cdev */</font>
+<strong>struct</strong> <font color="#2040a0">pardevice</font> <font color="4444FF">*</font><font color="#2040a0">pdev</font><font color="4444FF">;</font>         <font color="#444444">/* Parallel port device */</font>
+
+<font color="#444444">/* LED open */</font>
+<strong>int</strong>
+<font color="#2040a0">led_open</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">inode</font> <font color="4444FF">*</font><font color="#2040a0">inode</font>, <strong>struct</strong> <font color="#2040a0">file</font> <font color="4444FF">*</font><font color="#2040a0">file</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Write to the LED */</font>
+<font color="#2040a0">ssize_t</font>
+<font color="#2040a0">led_write</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">file</font> <font color="4444FF">*</font><font color="#2040a0">file</font>, <strong>const</strong> <strong>char</strong> <font color="4444FF">*</font><font color="#2040a0">buf</font>,
+          <font color="#2040a0">size_t</font> <font color="#2040a0">count</font>, <font color="#2040a0">loff_t</font> <font color="4444FF">*</font><font color="#2040a0">ppos</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>char</strong> <font color="#2040a0">kbuf</font><font color="4444FF">;</font>
+
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">copy_from_user</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">kbuf</font>, <font color="#2040a0">buf</font>, <font color="#FF0000">1</font><font color="4444FF">)</font><font color="4444FF">)</font> <strong>return</strong> <font color="4444FF">-</font><font color="#2040a0">EFAULT</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Claim the port */</font>
+    <font color="#2040a0">parport_claim_or_block</font><font color="4444FF">(</font><font color="#2040a0">pdev</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Write to the device */</font>
+    <font color="#2040a0">parport_write_data</font><font color="4444FF">(</font><font color="#2040a0">pdev</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">port</font>, <font color="#2040a0">kbuf</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Release the port */</font>
+    <font color="#2040a0">parport_release</font><font color="4444FF">(</font><font color="#2040a0">pdev</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>return</strong> <font color="#2040a0">count</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Release the device */</font>
+<strong>int</strong>
+<font color="#2040a0">led_release</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">inode</font> <font color="4444FF">*</font><font color="#2040a0">inode</font>, <strong>struct</strong> <font color="#2040a0">file</font> <font color="4444FF">*</font><font color="#2040a0">file</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* File Operations */</font>
+<strong>static</strong> <strong>struct</strong> <font color="#2040a0">file_operations</font> <font color="#2040a0">led_fops</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font>
+    .<font color="#2040a0">owner</font> <font color="4444FF">=</font> <font color="#2040a0">THIS_MODULE</font>,
+    .<font color="#2040a0">open</font> <font color="4444FF">=</font> <font color="#2040a0">led_open</font>,
+    .<font color="#2040a0">write</font> <font color="4444FF">=</font> <font color="#2040a0">led_write</font>,
+    .<font color="#2040a0">release</font> <font color="4444FF">=</font> <font color="#2040a0">led_release</font>,
+<font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">led_preempt</font><font color="4444FF">(</font><strong>void</strong> <font color="4444FF">*</font><font color="#2040a0">handle</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>return</strong> <font color="#FF0000">1</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Parport attach method */</font>
+<strong>static</strong> <strong>void</strong>
+<font color="#2040a0">led_attach</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">parport</font> <font color="4444FF">*</font><font color="#2040a0">port</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* Register the parallel LED device with parport */</font>
+    <font color="#2040a0">pdev</font> <font color="4444FF">=</font> <font color="#2040a0">parport_register_device</font><font color="4444FF">(</font><font color="#2040a0">port</font>, <font color="#2040a0">DEVICE_NAME</font>,
+                                   <font color="#2040a0">led_preempt</font>, <font color="#2040a0">NULL</font>,
+                                   <font color="#2040a0">NULL</font>, <font color="#FF0000">0</font>, <font color="#2040a0">NULL</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">pdev</font> <font color="4444FF">=</font><font color="4444FF">=</font> <font color="#2040a0">NULL</font><font color="4444FF">)</font> <font color="#2040a0">printk</font><font color="4444FF">(</font><font color="#008000">&quot;Bad register<font color="#77dd77">\n</font>&quot;</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Parport detach method */</font>
+<strong>static</strong> <strong>void</strong>
+<font color="#2040a0">led_detach</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">parport</font> <font color="4444FF">*</font><font color="#2040a0">port</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* Do nothing */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Parport driver operations */</font>
+<strong>static</strong> <strong>struct</strong> <font color="#2040a0">parport_driver</font> <font color="#2040a0">led_driver</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font>
+    .<font color="#2040a0">name</font> <font color="4444FF">=</font> <font color="#008000">&quot;led&quot;</font>,
+    .<font color="#2040a0">attach</font> <font color="4444FF">=</font> <font color="#2040a0">led_attach</font>,
+    .<font color="#2040a0">detach</font> <font color="4444FF">=</font> <font color="#2040a0">led_detach</font>,
+<font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+
+<font color="#444444">/* Driver Initialization */</font>
+<strong>int</strong> <font color="#2040a0">__init</font>
+<font color="#2040a0">led_init</font><font color="4444FF">(</font><strong>void</strong><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* Request dynamic allocation of a device major number */</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">alloc_chrdev_region</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">dev_number</font>, <font color="#FF0000">0</font>, <font color="#FF0000">1</font>, <font color="#2040a0">DEVICE_NAME</font><font color="4444FF">)</font>
+        <font color="4444FF">&lt;</font> <font color="#FF0000">0</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#2040a0">printk</font><font color="4444FF">(</font><font color="#2040a0">KERN_DEBUG</font> <font color="#008000">&quot;Can't register device<font color="#77dd77">\n</font>&quot;</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <strong>return</strong> <font color="4444FF">-</font><font color="#FF0000">1</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#444444">/* Create the led class */</font>
+    <font color="#2040a0">led_class</font> <font color="4444FF">=</font> <font color="#2040a0">class_create</font><font color="4444FF">(</font><font color="#2040a0">THIS_MODULE</font>, <font color="#2040a0">DEVICE_NAME</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">IS_ERR</font><font color="4444FF">(</font><font color="#2040a0">led_class</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="#2040a0">printk</font><font color="4444FF">(</font><font color="#008000">&quot;Bad class create<font color="#77dd77">\n</font>&quot;</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Connect the file operations with the cdev */</font>
+    <font color="#2040a0">cdev_init</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">led_cdev</font>, <font color="4444FF">&amp;</font><font color="#2040a0">led_fops</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">led_cdev</font>.<font color="#2040a0">owner</font> <font color="4444FF">=</font> <font color="#2040a0">THIS_MODULE</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Connect the major/minor number to the cdev */</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">cdev_add</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">led_cdev</font>, <font color="#2040a0">dev_number</font>, <font color="#FF0000">1</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#2040a0">printk</font><font color="4444FF">(</font><font color="#008000">&quot;Bad cdev add<font color="#77dd77">\n</font>&quot;</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <strong>return</strong> <font color="#FF0000">1</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+    <font color="#2040a0">class_device_create</font><font color="4444FF">(</font><font color="#2040a0">led_class</font>, <font color="#2040a0">NULL</font>, <font color="#2040a0">dev_number</font>,
+                        <font color="#2040a0">NULL</font>, <font color="#2040a0">DEVICE_NAME</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Register this driver with parport */</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">parport_register_driver</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">led_driver</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#2040a0">printk</font><font color="4444FF">(</font><font color="#2040a0">KERN_ERR</font> <font color="#008000">&quot;Bad Parport Register<font color="#77dd77">\n</font>&quot;</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <strong>return</strong> <font color="4444FF">-</font><font color="#2040a0">EIO</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#2040a0">printk</font><font color="4444FF">(</font><font color="#008000">&quot;LED Driver Initialized.<font color="#77dd77">\n</font>&quot;</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Driver Exit */</font>
+<strong>void</strong> <font color="#2040a0">__exit</font>
+<font color="#2040a0">led_cleanup</font><font color="4444FF">(</font><strong>void</strong><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#2040a0">unregister_chrdev_region</font><font color="4444FF">(</font><font color="#2040a0">dev_number</font>, <font color="#FF0000">1</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">class_device_destroy</font><font color="4444FF">(</font><font color="#2040a0">led_class</font>,<font color="#2040a0">dev_number</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">class_destroy</font><font color="4444FF">(</font><font color="#2040a0">led_class</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>return</strong><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#2040a0">module_init</font><font color="4444FF">(</font><font color="#2040a0">led_init</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="#2040a0">module_exit</font><font color="4444FF">(</font><font color="#2040a0">led_cleanup</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="#2040a0">MODULE_LICENSE</font><font color="4444FF">(</font><font color="#008000">&quot;GPL&quot;</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

@@ -1,0 +1,98 @@
+<html>
+<head>
+  <title>Listing 4.1</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="#2040a0">spinlock_t</font> <font color="#2040a0">roller_lock</font> <font color="4444FF">=</font> <font color="#2040a0">SPIN_LOCK_UNLOCKED</font><font color="4444FF">;</font>
+<strong>static</strong> <font color="#2040a0">DECLARE_WAIT_QUEUE_HEAD</font><font color="4444FF">(</font><font color="#2040a0">roller_poll</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+<strong>static</strong> <font color="#2040a0">irqreturn_t</font>
+<font color="#2040a0">roller_interrupt</font><font color="4444FF">(</font><strong>int</strong> <font color="#2040a0">irq</font>, <strong>void</strong> <font color="4444FF">*</font><font color="#2040a0">dev_id</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>int</strong> <font color="#2040a0">i</font>, <font color="#2040a0">PA_t</font>, <font color="#2040a0">PA_delta_t</font>, <font color="#2040a0">movement</font> <font color="4444FF">=</font> <font color="#FF0000">0</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Get the waveforms from bits 0, 1 and 2
+       of Port D as shown in Figure 4.3 */</font>
+    <font color="#2040a0">PA_t</font> <font color="4444FF">=</font> <font color="#2040a0">PA_delta_t</font> <font color="4444FF">=</font> <font color="#2040a0">PORTD</font> <font color="4444FF">&amp;</font> <font color="#FF0000">0x07</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Wait until the state of the pins change.
+       (Add some timeout to the loop) */</font>
+    <strong>for</strong> <font color="4444FF">(</font><font color="#2040a0">i</font><font color="4444FF">=</font><font color="#FF0000">0</font><font color="4444FF">;</font> <font color="4444FF">(</font><font color="#2040a0">PA_t</font><font color="4444FF">=</font><font color="4444FF">=</font><font color="#2040a0">PA_delta_t</font><font color="4444FF">)</font><font color="4444FF">;</font> <font color="#2040a0">i</font><font color="4444FF">+</font><font color="4444FF">+</font><font color="4444FF">)</font><font color="4444FF"><strong>{</strong></font>
+        <font color="#2040a0">PA_delta_t</font> <font color="4444FF">=</font> <font color="#2040a0">PORTD</font> <font color="4444FF">&amp;</font> <font color="#FF0000">0x07</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#2040a0">movement</font> <font color="4444FF">=</font> <font color="#2040a0">determine_movement</font><font color="4444FF">(</font><font color="#2040a0">PA_t</font>, <font color="#2040a0">PA_delta_t</font><font color="4444FF">)</font><font color="4444FF">;</font> <font color="#444444">/* See below */</font>
+
+    <font color="#2040a0">spin_lock</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">roller_lock</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#444444">/* Store the wheel movement in a buffer for
+       later access by the read()/poll() entry points */</font>
+    <font color="#2040a0">store_movements</font><font color="4444FF">(</font><font color="#2040a0">movement</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">spin_unlock</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">roller_lock</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Wake up the poll entry point that might have
+       gone to sleep, waiting for a wheel movement */</font>
+    <font color="#2040a0">wake_up_interruptible</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">roller_poll</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <strong>return</strong> <font color="#2040a0">IRQ_HANDLED</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<strong>int</strong>
+<font color="#2040a0">determine_movement</font><font color="4444FF">(</font><strong>int</strong> <font color="#2040a0">PA_t</font>, <strong>int</strong> <font color="#2040a0">PA_delta_t</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+
+    <strong>switch</strong> <font color="4444FF">(</font><font color="#2040a0">PA_t</font><font color="4444FF">)</font><font color="4444FF"><strong>{</strong></font>
+    <strong>case</strong> <font color="#FF0000">0</font><font color="4444FF">:</font>
+        <strong>switch</strong> <font color="4444FF">(</font><font color="#2040a0">PA_delta_t</font><font color="4444FF">)</font><font color="4444FF"><strong>{</strong></font>
+        <strong>case</strong> <font color="#FF0000">1</font><font color="4444FF">:</font>
+            <font color="#2040a0">movement</font> <font color="4444FF">=</font> <font color="#2040a0">ANTICLOCKWISE</font><font color="4444FF">;</font>
+            <strong>break</strong><font color="4444FF">;</font>
+        <strong>case</strong> <font color="#FF0000">2</font><font color="4444FF">:</font>
+            <font color="#2040a0">movement</font> <font color="4444FF">=</font> <font color="#2040a0">CLOCKWISE</font><font color="4444FF">;</font>
+            <strong>break</strong><font color="4444FF">;</font>
+        <strong>case</strong> <font color="#FF0000">4</font><font color="4444FF">:</font>
+            <font color="#2040a0">movement</font> <font color="4444FF">=</font> <font color="#2040a0">KEYPRESSED</font><font color="4444FF">;</font>
+            <strong>break</strong><font color="4444FF">;</font>
+        <font color="4444FF"><strong>}</strong></font>
+        <strong>break</strong><font color="4444FF">;</font>
+    <strong>case</strong> <font color="#FF0000">1</font><font color="4444FF">:</font>
+        <strong>switch</strong> <font color="4444FF">(</font><font color="#2040a0">PA_delta_t</font><font color="4444FF">)</font><font color="4444FF"><strong>{</strong></font>
+        <strong>case</strong> <font color="#FF0000">3</font><font color="4444FF">:</font>
+            <font color="#2040a0">movement</font> <font color="4444FF">=</font> <font color="#2040a0">ANTICLOCKWISE</font><font color="4444FF">;</font>
+            <strong>break</strong><font color="4444FF">;</font>
+        <strong>case</strong> <font color="#FF0000">0</font><font color="4444FF">:</font>
+            <font color="#2040a0">movement</font> <font color="4444FF">=</font> <font color="#2040a0">CLOCKWISE</font><font color="4444FF">;</font>
+            <strong>break</strong><font color="4444FF">;</font>
+        <font color="4444FF"><strong>}</strong></font>
+        <strong>break</strong><font color="4444FF">;</font>
+    <strong>case</strong> <font color="#FF0000">2</font><font color="4444FF">:</font>
+        <strong>switch</strong> <font color="4444FF">(</font><font color="#2040a0">PA_delta_t</font><font color="4444FF">)</font><font color="4444FF"><strong>{</strong></font>
+        <strong>case</strong> <font color="#FF0000">0</font><font color="4444FF">:</font>
+            <font color="#2040a0">movement</font> <font color="4444FF">=</font> <font color="#2040a0">ANTICLOCKWISE</font><font color="4444FF">;</font>
+            <strong>break</strong><font color="4444FF">;</font>
+        <strong>case</strong> <font color="#FF0000">3</font><font color="4444FF">:</font>
+            <font color="#2040a0">movement</font> <font color="4444FF">=</font> <font color="#2040a0">CLOCKWISE</font><font color="4444FF">;</font>
+            <strong>break</strong><font color="4444FF">;</font>
+        <font color="4444FF"><strong>}</strong></font>
+        <strong>break</strong><font color="4444FF">;</font>
+    <strong>case</strong> <font color="#FF0000">3</font><font color="4444FF">:</font>
+        <strong>switch</strong> <font color="4444FF">(</font><font color="#2040a0">PA_delta_t</font><font color="4444FF">)</font><font color="4444FF"><strong>{</strong></font>
+        <strong>case</strong> <font color="#FF0000">2</font><font color="4444FF">:</font>
+            <font color="#2040a0">movement</font> <font color="4444FF">=</font> <font color="#2040a0">ANTICLOCKWISE</font><font color="4444FF">;</font>
+            <strong>break</strong><font color="4444FF">;</font>
+        <strong>case</strong> <font color="#FF0000">1</font><font color="4444FF">:</font>
+            <font color="#2040a0">movement</font> <font color="4444FF">=</font> <font color="#2040a0">CLOCKWISE</font><font color="4444FF">;</font>
+            <strong>break</strong><font color="4444FF">;</font>
+        <font color="4444FF"><strong>}</strong></font>
+    <strong>case</strong> <font color="#FF0000">4</font><font color="4444FF">:</font>
+        <font color="#2040a0">movement</font> <font color="4444FF">=</font> <font color="#2040a0">KEYPRESSED</font><font color="4444FF">;</font>
+        <strong>break</strong><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+<font color="4444FF"><strong>}</strong></font> 
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

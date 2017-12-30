@@ -1,0 +1,25 @@
+<html>
+<head>
+  <title>Listing 8.3</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<strong>int</strong>
+<font color="#2040a0">eep_open</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">inode</font> <font color="4444FF">*</font><font color="#2040a0">inode</font>, <strong>struct</strong> <font color="#2040a0">file</font> <font color="4444FF">*</font><font color="#2040a0">file</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* The EEPROM bank to be opened */</font>
+    <font color="#2040a0">n</font> <font color="4444FF">=</font> <font color="#2040a0">MINOR</font><font color="4444FF">(</font><font color="#2040a0">file</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">f_dentry</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">d_inode</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">i_rdev</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">file</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">private_data</font> <font color="4444FF">=</font> <font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">ee_bank</font> <font color="4444FF">*</font><font color="4444FF">)</font><font color="#2040a0">ee_bank_list</font><font color="4444FF">[</font><font color="#2040a0">n</font><font color="4444FF">]</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Initialize the fields in ee_bank_list[n] such as
+       size, slave address, and the current file pointer */</font>
+
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

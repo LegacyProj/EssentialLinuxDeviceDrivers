@@ -1,0 +1,55 @@
+<html>
+<head>
+  <title>Listing 19.6</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="0000ff"><strong>#include <font color="#008000">&lt;usb.h&gt;</font>                 <font color="#444444"> /* From the libusb package */</font></strong></font>
+
+<font color="0000ff"><strong>#define DIGICAM_VENDOR_ID 0x04b0 <font color="#444444"> /* From /proc/bus/usb/devices */</font></strong></font>
+<font color="0000ff"><strong>#define DIGICAM_PRODUCT_ID 0x0205<font color="#444444"> /* From /proc/bus/usb/devices */</font></strong></font>
+
+<strong>int</strong>
+<font color="#2040a0">main</font><font color="4444FF">(</font><strong>int</strong> <font color="#2040a0">argc</font>, <strong>char</strong> <font color="4444FF">*</font><font color="#2040a0">argv</font><font color="4444FF">[</font><font color="4444FF">]</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>struct</strong> <font color="#2040a0">usb_dev_handle</font> <font color="4444FF">*</font><font color="#2040a0">mydevice_handle</font><font color="4444FF">;</font>
+    <strong>struct</strong> <font color="#2040a0">usb_bus</font> <font color="4444FF">*</font><font color="#2040a0">usb_bus</font><font color="4444FF">;</font>
+    <strong>struct</strong> <font color="#2040a0">usb_device</font> <font color="4444FF">*</font><font color="#2040a0">mydevice</font><font color="4444FF">;</font>
+    
+    <font color="#444444">/* Initialize libusb */</font>
+    <font color="#2040a0">usb_init</font><font color="4444FF">(</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">usb_find_buses</font><font color="4444FF">(</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">usb_find_devices</font><font color="4444FF">(</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Walk the bus */</font>
+    <strong>for</strong> <font color="4444FF">(</font><font color="#2040a0">usb_bus</font> <font color="4444FF">=</font> <font color="#2040a0">usb_buses</font><font color="4444FF">;</font> <font color="#2040a0">usb_bus</font><font color="4444FF">;</font> <font color="#2040a0">usb_bus</font> <font color="4444FF">=</font> <font color="#2040a0">usb_bus</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">next</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <strong>for</strong> <font color="4444FF">(</font><font color="#2040a0">mydevice</font> <font color="4444FF">=</font> <font color="#2040a0">usb_bus</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">devices</font><font color="4444FF">;</font> <font color="#2040a0">mydevice</font><font color="4444FF">;</font>
+             <font color="#2040a0">mydevice</font> <font color="4444FF">=</font> <font color="#2040a0">mydevice</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">next</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+            <strong>if</strong> <font color="4444FF">(</font><font color="4444FF">(</font><font color="#2040a0">mydevice</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">descriptor</font>.<font color="#2040a0">idVendor</font> <font color="4444FF">=</font><font color="4444FF">=</font> <font color="#2040a0">DIGICAM_VENDOR_ID</font><font color="4444FF">)</font> <font color="4444FF">&amp;</font><font color="4444FF">&amp;</font>
+                <font color="4444FF">(</font><font color="#2040a0">mydevice</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">descriptor</font>.<font color="#2040a0">idProduct</font> <font color="4444FF">=</font><font color="4444FF">=</font> <font color="#2040a0">DIGICAM_PRODUCT_ID</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+
+                <font color="#444444">/* Open the device */</font>
+                <font color="#2040a0">mydevice_handle</font> <font color="4444FF">=</font> <font color="#2040a0">usb_open</font><font color="4444FF">(</font><font color="#2040a0">mydevice</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+                <font color="#444444">/* Send commands to the camera. This is the heart of the
+                   driver. Getting information about the USB control
+                   messages to which your device responds is often a
+                   challenge since many vendors do not readily divulge
+                   hardware details */</font>
+                <font color="#2040a0">usb_control_msg</font><font color="4444FF">(</font><font color="#2040a0">mydevice_handle</font>, ...<font color="4444FF">)</font><font color="4444FF">;</font>
+
+                <font color="#444444">/* ... */</font>
+
+                <font color="#444444">/* Close the device */</font>
+                <font color="#2040a0">usb_close</font><font color="4444FF">(</font><font color="#2040a0">mydevice_handle</font><font color="4444FF">)</font><font color="4444FF">;</font>
+            <font color="4444FF"><strong>}</strong></font>
+        <font color="4444FF"><strong>}</strong></font>
+    <font color="4444FF"><strong>}</strong></font>
+<font color="4444FF"><strong>}</strong></font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

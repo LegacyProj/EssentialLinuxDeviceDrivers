@@ -1,0 +1,37 @@
+<html>
+<head>
+  <title>Listing 8.4</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="0000ff"><strong>#include <font color="#008000">&lt;linux/i2c.h&gt;</font></strong></font>
+
+<font color="#444444">/* The EEPROM has two memory banks having addresses SLAVE_ADDR1
+ * and SLAVE_ADDR2, respectively
+ */</font>
+<strong>static</strong> <strong>unsigned</strong> <strong>short</strong> <font color="#2040a0">normal_i2c</font><font color="4444FF">[</font><font color="4444FF">]</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font>
+    <font color="#2040a0">SLAVE_ADDR1</font>, <font color="#2040a0">SLAVE_ADDR2</font>, <font color="#2040a0">I2C_CLIENT_END</font>
+<font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+
+<strong>static</strong> <strong>struct</strong> <font color="#2040a0">i2c_client_address_data</font> <font color="#2040a0">addr_data</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font>
+    .<font color="#2040a0">normal_i2c</font> <font color="4444FF">=</font> <font color="#2040a0">normal_i2c</font>,
+    .<font color="#2040a0">probe</font> <font color="4444FF">=</font> <font color="#2040a0">ignore</font>,
+    .<font color="#2040a0">ignore</font> <font color="4444FF">=</font> <font color="#2040a0">ignore</font>,
+    .<font color="#2040a0">forces</font> <font color="4444FF">=</font> <font color="#2040a0">ignore</font>,
+<font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">eep_probe</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">i2c_adapter</font> <font color="4444FF">*</font><font color="#2040a0">adapter</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* The callback function eep_attach(), is shown
+     * in Listing 8.5
+     */</font>
+    <strong>return</strong> <font color="#2040a0">i2c_probe</font><font color="4444FF">(</font><font color="#2040a0">adapter</font>, <font color="4444FF">&amp;</font><font color="#2040a0">addr_data</font>, <font color="#2040a0">eep_attach</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

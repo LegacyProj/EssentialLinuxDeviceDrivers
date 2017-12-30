@@ -1,0 +1,33 @@
+<html>
+<head>
+  <title>Listing 3.2</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<strong>static</strong> <strong>int</strong> <font color="#2040a0">__init</font>
+<font color="#2040a0">mydrv_init</font><font color="4444FF">(</font><strong>void</strong><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* Initialize the lock to protect against
+       concurrent list access */</font>
+    <font color="#2040a0">spin_lock_init</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">mydrv_wq</font>.<font color="#2040a0">lock</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Initialize the wait queue for communication
+       between the submitter and the worker */</font>
+    <font color="#2040a0">init_waitqueue_head</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">mydrv_wq</font>.<font color="#2040a0">todo</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Initialize the list head */</font>
+    <font color="#2040a0">INIT_LIST_HEAD</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">mydrv_wq</font>.<font color="#2040a0">mydrv_worklist</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Start the worker thread. See Listing 3.4 */</font>
+    <font color="#2040a0">kernel_thread</font><font color="4444FF">(</font><font color="#2040a0">mydrv_worker</font>, <font color="#2040a0">NULL</font>,
+                  <font color="#2040a0">CLONE_FS</font> <font color="4444FF">|</font> <font color="#2040a0">CLONE_FILES</font> <font color="4444FF">|</font> <font color="#2040a0">CLONE_SIGHAND</font> <font color="4444FF">|</font> <font color="#2040a0">SIGCHLD</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

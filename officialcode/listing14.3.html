@@ -1,0 +1,86 @@
+<html>
+<head>
+  <title>Listing 14.3</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="0000ff"><strong>#define READ_SECTOR_CMD        1</strong></font>
+<font color="0000ff"><strong>#define WRITE_SECTOR_CMD       2</strong></font>
+<font color="0000ff"><strong>#define GET_IDENTITY_CMD       3</strong></font>
+<font color="0000ff"><strong>#define BUSY_STATUS            0x10</strong></font>
+<font color="0000ff"><strong>#define SECTOR_NUMBER_REGISTER 0x20000000</strong></font>
+<font color="0000ff"><strong>#define SECTOR_COUNT_REGISTER  0x20000001</strong></font>
+<font color="0000ff"><strong>#define COMMAND_REGISTER       0x20000002</strong></font>
+<font color="0000ff"><strong>#define STATUS_REGISTER        0x20000003</strong></font>
+<font color="0000ff"><strong>#define DATA_REGISTER          0x20000004</strong></font>
+
+<font color="#444444">/* Request method */</font>
+<strong>static</strong> <strong>void</strong>
+<font color="#2040a0">myblkdev_request</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">request_queue</font> <font color="4444FF">*</font><font color="#2040a0">rq</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>struct</strong> <font color="#2040a0">request</font> <font color="4444FF">*</font><font color="#2040a0">req</font><font color="4444FF">;</font>
+    <strong>unsigned</strong> <strong>char</strong> <font color="#2040a0">status</font><font color="4444FF">;</font>
+    <strong>int</strong> <font color="#2040a0">i</font>, <font color="#2040a0">good</font> <font color="4444FF">=</font> <font color="#FF0000">0</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Loop through the requests waiting in line */</font>
+    <strong>while</strong> <font color="4444FF">(</font><font color="4444FF">(</font><font color="#2040a0">req</font> <font color="4444FF">=</font> <font color="#2040a0">elv_next_request</font><font color="4444FF">(</font><font color="#2040a0">rq</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF">!</font><font color="4444FF">=</font> <font color="#2040a0">NULL</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#444444">/* Program the start sector and the number of sectors */</font>
+        <font color="#2040a0">outb</font><font color="4444FF">(</font><font color="#2040a0">req</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">sector</font>, <font color="#2040a0">SECTOR_NUMBER_REGISTER</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#2040a0">outb</font><font color="4444FF">(</font><font color="#2040a0">req</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">nr_sectors</font>, <font color="#2040a0">SECTOR_COUNT_REGISTER</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+        <font color="#444444">/* We are interested only in filesystem requests. A SCSI command
+           is another possible type of request. For the full list, look
+           at the enumeration of rq_cmd_type_bits in
+           include/linux/blkdev.h */</font>
+        <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">blk_fs_request</font><font color="4444FF">(</font><font color="#2040a0">req</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+            <strong>switch</strong><font color="4444FF">(</font><font color="#2040a0">rq_data_dir</font><font color="4444FF">(</font><font color="#2040a0">req</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+            <strong>case</strong> <font color="#2040a0">READ</font><font color="4444FF">:</font>
+                <font color="#444444">/* Issue Read Sector Command */</font>
+                <font color="#2040a0">outb</font><font color="4444FF">(</font><font color="#2040a0">READ_SECTOR_CMD</font>, <font color="#2040a0">COMMAND_REGISTER</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+                <font color="#444444">/* Traverse all requested sectors, byte by byte */</font>
+                <strong>for</strong> <font color="4444FF">(</font><font color="#2040a0">i</font> <font color="4444FF">=</font> <font color="#FF0000">0</font><font color="4444FF">;</font> <font color="#2040a0">i</font> <font color="4444FF">&lt;</font> <font color="#FF0000">512</font><font color="4444FF">*</font><font color="#2040a0">req</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">nr_sectors</font><font color="4444FF">;</font> <font color="#2040a0">i</font><font color="4444FF">+</font><font color="4444FF">+</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+                    <font color="#444444">/* Wait until the disk is ready. Busy duration should be
+                       in the order of microseconds. Sitting in a tight loop
+                       for simplicity; more intelligence required in the real
+                       world */</font>
+                    <strong>while</strong> <font color="4444FF">(</font><font color="4444FF">(</font><font color="#2040a0">status</font> <font color="4444FF">=</font> <font color="#2040a0">inb</font><font color="4444FF">(</font><font color="#2040a0">STATUS_REGISTER</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF">&amp;</font> <font color="#2040a0">BUSY_STATUS</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+                    <font color="#444444">/* Read data from disk to the buffer associated with the
+                       request */</font>
+                    <font color="#2040a0">req</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">buffer</font><font color="4444FF">[</font><font color="#2040a0">i</font><font color="4444FF">]</font> <font color="4444FF">=</font> <font color="#2040a0">inb</font><font color="4444FF">(</font><font color="#2040a0">DATA_REGISTER</font><font color="4444FF">)</font><font color="4444FF">;</font>
+                <font color="4444FF"><strong>}</strong></font>
+                <font color="#2040a0">good</font> <font color="4444FF">=</font> <font color="#FF0000">1</font><font color="4444FF">;</font>
+                <strong>break</strong><font color="4444FF">;</font>
+
+            <strong>case</strong> <font color="#2040a0">WRITE</font><font color="4444FF">:</font>
+                <font color="#444444">/* Issue Write Sector Command */</font>
+                <font color="#2040a0">outb</font><font color="4444FF">(</font><font color="#2040a0">WRITE_SECTOR_CMD</font>, <font color="#2040a0">COMMAND_REGISTER</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+                <font color="#444444">/* Traverse all requested sectors, byte by byte */</font>
+                <strong>for</strong> <font color="4444FF">(</font><font color="#2040a0">i</font> <font color="4444FF">=</font> <font color="#FF0000">0</font><font color="4444FF">;</font> <font color="#2040a0">i</font> <font color="4444FF">&lt;</font> <font color="#FF0000">512</font><font color="4444FF">*</font><font color="#2040a0">req</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">nr_sectors</font><font color="4444FF">;</font> <font color="#2040a0">i</font><font color="4444FF">+</font><font color="4444FF">+</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+                    <font color="#444444">/* Wait until the disk is ready. Busy duration should be
+                       in the order of microseconds. Sitting in a tight loop
+                       for simplicity; more intelligence required in the real
+                       world */</font>
+                    <strong>while</strong> <font color="4444FF">(</font><font color="4444FF">(</font><font color="#2040a0">status</font> <font color="4444FF">=</font> <font color="#2040a0">inb</font><font color="4444FF">(</font><font color="#2040a0">STATUS_REGISTER</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF">&amp;</font> <font color="#2040a0">BUSY_STATUS</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+                    <font color="#444444">/* Write data to disk from the buffer associated with the
+                       request */</font>
+                    <font color="#2040a0">outb</font><font color="4444FF">(</font><font color="#2040a0">req</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">buffer</font><font color="4444FF">[</font><font color="#2040a0">i</font><font color="4444FF">]</font>, <font color="#2040a0">DATA_REGISTER</font><font color="4444FF">)</font><font color="4444FF">;</font>
+                <font color="4444FF"><strong>}</strong></font>
+                <font color="#2040a0">good</font> <font color="4444FF">=</font> <font color="#FF0000">1</font><font color="4444FF">;</font>
+                <strong>break</strong><font color="4444FF">;</font>
+            <font color="4444FF"><strong>}</strong></font>
+        <font color="4444FF"><strong>}</strong></font>
+
+        <font color="#2040a0">end_request</font><font color="4444FF">(</font><font color="#2040a0">req</font>, <font color="#2040a0">good</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+<font color="4444FF"><strong>}</strong></font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

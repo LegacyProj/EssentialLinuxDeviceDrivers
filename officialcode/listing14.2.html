@@ -1,0 +1,43 @@
+<html>
+<head>
+  <title>Listing 14.2</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="0000ff"><strong>#define GET_DEVICE_ID 0xAA00<font color="#444444"> /* Ioctl command definition */</font></strong></font>
+
+<font color="#444444">/* The ioctl operation */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">myblkdev_ioctl</font> <font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">inode</font> <font color="4444FF">*</font><font color="#2040a0">inode</font>, <strong>struct</strong> <font color="#2040a0">file</font> <font color="4444FF">*</font><font color="#2040a0">file</font>,
+                <strong>unsigned</strong> <strong>int</strong> <font color="#2040a0">cmd</font>, <strong>unsigned</strong> <strong>long</strong> <font color="#2040a0">arg</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>unsigned</strong> <strong>char</strong> <font color="#2040a0">status</font><font color="4444FF">;</font>
+
+    <strong>switch</strong> <font color="4444FF">(</font><font color="#2040a0">cmd</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+    <strong>case</strong> <font color="#2040a0">GET_DEVICE_ID</font><font color="4444FF">:</font>
+        <font color="#2040a0">outb</font><font color="4444FF">(</font><font color="#2040a0">GET_IDENTITY_CMD</font>, <font color="#2040a0">COMMAND_REGISTER</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#444444">/* Wait as long as the controller is busy */</font>
+        <strong>while</strong> <font color="4444FF">(</font><font color="4444FF">(</font><font color="#2040a0">status</font> <font color="4444FF">=</font> <font color="#2040a0">inb</font><font color="4444FF">(</font><font color="#2040a0">STATUS_REGISTER</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF">&amp;</font> <font color="#2040a0">BUSY_STATUS</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#444444">/* Obtain ID and return it to user space */</font>
+        <strong>return</strong> <font color="#2040a0">put_user</font><font color="4444FF">(</font><font color="#2040a0">inb</font><font color="4444FF">(</font><font color="#2040a0">DATA_REGISTER</font><font color="4444FF">)</font>, <font color="4444FF">(</font><strong>long</strong> <font color="#2040a0">__user</font> <font color="4444FF">*</font><font color="4444FF">)</font><font color="#2040a0">arg</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>default</strong><font color="4444FF">:</font>
+        <strong>return</strong> <font color="4444FF">-</font><font color="#2040a0">EINVAL</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Block device operations */</font>
+<strong>static</strong> <strong>struct</strong> <font color="#2040a0">block_device_operations</font> <font color="#2040a0">myblkdev_fops</font> <font color="4444FF">=</font> <font color="4444FF"><strong>{</strong></font>
+    .<font color="#2040a0">owner</font> <font color="4444FF">=</font> <font color="#2040a0">THIS_MODULE</font>, <font color="#444444">/* Owner of this structure */</font>
+    .<font color="#2040a0">ioctl</font> <font color="4444FF">=</font> <font color="#2040a0">myblkdev_ioctl</font>,
+    <font color="#444444">/* The following operations are not implemented for our example
+       storage controller: open(), release(), unlocked_ioctl(),
+       compat_ioctl(), direct_access(), getgeo(), revalidate_disk(), and
+       media_changed() */</font>
+<font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

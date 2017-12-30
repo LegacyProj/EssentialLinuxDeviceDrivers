@@ -1,0 +1,111 @@
+<html>
+<head>
+  <title>Listing 10.5</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="#444444">/* Device-specific data structure for the Ethernet Function
+   allocated during device initialization */</font>
+<strong>struct</strong> <font color="#2040a0">device_data</font> <font color="4444FF"><strong>{</strong></font>
+    <strong>struct</strong> <font color="#2040a0">pci_dev</font> <font color="4444FF">*</font><font color="#2040a0">pdev</font><font color="4444FF">;</font>    <font color="#444444">/* The PCI Device structure */</font>
+    <strong>struct</strong> <font color="#2040a0">net_device</font> <font color="4444FF">*</font><font color="#2040a0">ndev</font><font color="4444FF">;</font> <font color="#444444">/* The Net Device structure */</font>
+    <strong>void</strong> <font color="4444FF">*</font><font color="#2040a0">dma_buffer_rx</font><font color="4444FF">;</font>     <font color="#444444">/* Kernel virtual address of the
+                                receive descriptor */</font>
+    <font color="#2040a0">dma_addr_t</font> <font color="#2040a0">dma_bus_rx</font><font color="4444FF">;</font>   <font color="#444444">/* Bus address of the receive
+                                descriptor */</font>
+    <strong>void</strong> <font color="4444FF">*</font><font color="#2040a0">dma_buffer_tx</font><font color="4444FF">;</font>     <font color="#444444">/* Kernel virtual address of the
+                                transmit descriptor */</font>
+    <font color="#2040a0">dma_addr_t</font> <font color="#2040a0">dma_bus_tx</font><font color="4444FF">;</font>   <font color="#444444">/* Bus address of the transmit
+                                descriptor */</font>
+    <font color="#444444">/* ... */</font>
+    <font color="#2040a0">spin_lock_t</font> <font color="#2040a0">device_lock</font><font color="4444FF">;</font> <font color="#444444">/* Serialize */</font>
+<font color="4444FF"><strong>}</strong></font> <font color="4444FF">*</font><font color="#2040a0">mydev_data</font><font color="4444FF">;</font>
+
+<font color="#444444">/* On-card registers related to DMA */</font>
+<font color="0000ff"><strong>#define DMA_RX_REGISTER_OFFSET 0x0 /* Offset of the register</strong></font>
+                                      <font color="#2040a0">holding</font> <font color="#2040a0">the</font> <font color="#2040a0">bus</font> <font color="#2040a0">address</font>
+                                      <font color="#2040a0">of</font> <font color="#2040a0">the</font> <font color="#2040a0">RX</font> <font color="#2040a0">descriptor</font> <font color="4444FF">*</font>/
+<font color="0000ff"><strong>#define DMA_TX_REGISTER_OFFSET 0x4 /* Offset of the register</strong></font>
+                                      <font color="#2040a0">holding</font> <font color="#2040a0">the</font> <font color="#2040a0">bus</font> <font color="#2040a0">address</font>
+                                      <font color="#2040a0">of</font> <font color="#2040a0">the</font> <font color="#2040a0">TX</font> <font color="#2040a0">descriptor</font> <font color="4444FF">*</font>/
+<font color="0000ff"><strong>#define CONTROL_REGISTER 0x8       /* Offset of the control</strong></font>
+                                      <strong>register</strong> <font color="4444FF">*</font>/
+
+<font color="#444444">/* Control Register Defines */</font>
+<font color="0000ff"><strong>#define INITIATE_XMIT 0x1</strong></font>
+
+<font color="#444444">/* Descriptor control word definitions */</font>
+<font color="0000ff"><strong>#define FREE_FLAG 0x1     <font color="#444444"> /* Free Descriptor */</font></strong></font>
+<font color="0000ff"><strong>#define INTERRUPT_FLAG 0x2<font color="#444444"> /* Assert interrupt after DMA */</font></strong></font>
+
+<font color="#444444">/* Invoked from Listing 10.3 */</font>
+<strong>static</strong> <strong>void</strong>
+<font color="#2040a0">dma_descriptor_setup</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">pci_dev</font> <font color="4444FF">*</font><font color="#2040a0">pdev</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* Allocate receive DMA descriptors and buffers */</font>
+    <font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_buffer_rx</font> <font color="4444FF">=</font>
+        <font color="#2040a0">pci_alloc_consistent</font><font color="4444FF">(</font><font color="#2040a0">pdev</font>, <font color="#FF0000">3096</font>, <font color="4444FF">&amp;</font><font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_bus_rx</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Fill the two receive descriptors as shown in Figure 10.2 */</font>
+
+    <font color="#444444">/* RX descriptor 1 */</font>
+    <font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_buffer_rx</font><font color="4444FF">[</font><font color="#FF0000">0</font><font color="4444FF">]</font> <font color="4444FF">=</font> <font color="#2040a0">cpu_to_le32</font><font color="4444FF">(</font><font color="4444FF">(</font><strong>unsigned</strong> <strong>long</strong><font color="4444FF">)</font>
+                         <font color="4444FF">(</font><font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_bus_rx</font> <font color="4444FF">+</font> <font color="#FF0000">24</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">;</font> <font color="#444444">/* Buffer address */</font>
+    <font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_buffer_rx</font><font color="4444FF">[</font><font color="#FF0000">1</font><font color="4444FF">]</font> <font color="4444FF">=</font> <font color="#FF0000">1536</font><font color="4444FF">;</font> <font color="#444444">/* Buffer length */</font>
+    <font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_buffer_rx</font><font color="4444FF">[</font><font color="#FF0000">2</font><font color="4444FF">]</font> <font color="4444FF">=</font> <font color="#2040a0">FREE_FLAG</font><font color="4444FF">;</font> <font color="#444444">/* Descriptor is free */</font>
+
+    <font color="#444444">/* RX descriptor 2 */</font>
+    <font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_buffer_rx</font><font color="4444FF">[</font><font color="#FF0000">3</font><font color="4444FF">]</font> <font color="4444FF">=</font> <font color="#2040a0">cpu_to_le32</font><font color="4444FF">(</font><font color="4444FF">(</font><strong>unsigned</strong> <strong>long</strong><font color="4444FF">)</font>
+                         <font color="4444FF">(</font><font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_bus_rx</font> <font color="4444FF">+</font> <font color="#FF0000">1560</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">;</font> <font color="#444444">/* Buffer address */</font>
+    <font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_buffer_rx</font><font color="4444FF">[</font><font color="#FF0000">4</font><font color="4444FF">]</font> <font color="4444FF">=</font> <font color="#FF0000">1536</font><font color="4444FF">;</font> <font color="#444444">/* Buffer length */</font>
+    <font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_buffer_rx</font><font color="4444FF">[</font><font color="#FF0000">5</font><font color="4444FF">]</font> <font color="4444FF">=</font> <font color="#2040a0">FREE_FLAG</font><font color="4444FF">;</font> <font color="#444444">/* Descriptor is free */</font>
+    <font color="#2040a0">wmb</font><font color="4444FF">(</font><font color="4444FF">)</font><font color="4444FF">;</font> <font color="#444444">/* Write Memory Barrier */</font>
+
+    <font color="#444444">/* Write the address of the receive descriptor to the appropriate
+       register in the card. The I/O base address, ioaddr, was populated
+       in Listing 10.3 */</font>
+    <font color="#2040a0">outl</font><font color="4444FF">(</font><font color="#2040a0">cpu_to_le32</font><font color="4444FF">(</font><font color="4444FF">(</font><strong>unsigned</strong> <strong>long</strong><font color="4444FF">)</font><font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_bus_rx</font><font color="4444FF">)</font>,
+         <font color="#2040a0">ioaddr</font> <font color="4444FF">+</font> <font color="#2040a0">DMA_RX_REGISTER_OFFSET</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Allocate transmit DMA descriptors and buffers */</font>
+    <font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_buffer_tx</font> <font color="4444FF">=</font>
+        <font color="#2040a0">pci_alloc_consistent</font><font color="4444FF">(</font><font color="#2040a0">pdev</font>, <font color="#FF0000">3096</font>, <font color="4444FF">&amp;</font><font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_bus_tx</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Fill the two transmit descriptors as shown in Figure 10.2 */</font>
+
+    <font color="#444444">/* TX descriptor 1 */</font>
+    <font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_buffer_tx</font><font color="4444FF">[</font><font color="#FF0000">0</font><font color="4444FF">]</font> <font color="4444FF">=</font> <font color="#2040a0">cpu_to_le32</font><font color="4444FF">(</font><font color="4444FF">(</font><strong>unsigned</strong> <strong>long</strong><font color="4444FF">)</font>
+                         <font color="4444FF">(</font><font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_bus_tx</font> <font color="4444FF">+</font> <font color="#FF0000">24</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">;</font> <font color="#444444">/* Buffer address */</font>
+    <font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_buffer_tx</font><font color="4444FF">[</font><font color="#FF0000">1</font><font color="4444FF">]</font> <font color="4444FF">=</font> <font color="#FF0000">1536</font><font color="4444FF">;</font> <font color="#444444">/* Buffer length */</font>
+    <font color="#444444">/* Valid descriptor. Generate an interrupt
+       after completing the DMA */</font>
+    <font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_buffer_tx</font><font color="4444FF">[</font><font color="#FF0000">2</font><font color="4444FF">]</font> <font color="4444FF">=</font> <font color="4444FF">(</font><font color="#2040a0">FREE_FLAG</font> <font color="4444FF">|</font> <font color="#2040a0">INTERRUPT_FLAG</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* TX descriptor 2 */</font>
+    <font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_buffer_tx</font><font color="4444FF">[</font><font color="#FF0000">3</font><font color="4444FF">]</font> <font color="4444FF">=</font> <font color="#2040a0">cpu_to_le32</font><font color="4444FF">(</font><font color="4444FF">(</font><strong>unsigned</strong> <strong>long</strong><font color="4444FF">)</font>
+                         <font color="4444FF">(</font><font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_bus_tx</font> <font color="4444FF">+</font> <font color="#FF0000">1560</font><font color="4444FF">)</font><font color="4444FF">)</font><font color="4444FF">;</font> <font color="#444444">/* Buffer address */</font>
+    <font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_buffer_tx</font><font color="4444FF">[</font><font color="#FF0000">4</font><font color="4444FF">]</font> <font color="4444FF">=</font> <font color="#FF0000">1536</font><font color="4444FF">;</font> <font color="#444444">/* Buffer length */</font>
+    <font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_buffer_tx</font><font color="4444FF">[</font><font color="#FF0000">5</font><font color="4444FF">]</font> <font color="4444FF">=</font> <font color="4444FF">(</font><font color="#2040a0">FREE_FLAG</font> <font color="4444FF">|</font> <font color="#2040a0">INTERRUPT_FLAG</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">wmb</font><font color="4444FF">(</font><font color="4444FF">)</font><font color="4444FF">;</font> <font color="#444444">/* Write Memory Barrier */</font>
+
+    <font color="#444444">/* Write the address of the transmit descriptor to the appropriate
+       register in the card. The I/O base, ioaddr, was populated in
+       Listing 10.3 */</font>
+    <font color="#2040a0">outl</font><font color="4444FF">(</font><font color="#2040a0">cpu_to_le32</font><font color="4444FF">(</font><font color="4444FF">(</font><strong>unsigned</strong> <strong>long</strong><font color="4444FF">)</font><font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_bus_tx</font><font color="4444FF">)</font>,
+         <font color="#2040a0">ioaddr</font> <font color="4444FF">+</font> <font color="#2040a0">DMA_TX_REGISTER_OFFSET</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* Invoked from Listing 10.3 */</font>
+<strong>static</strong> <strong>void</strong>
+<font color="#2040a0">dma_descriptor_release</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">pci_dev</font> <font color="4444FF">*</font><font color="#2040a0">pdev</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#2040a0">pci_free_consistent</font><font color="4444FF">(</font><font color="#2040a0">pdev</font>, <font color="#FF0000">3096</font>, <font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_bus_tx</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="#2040a0">pci_free_consistent</font><font color="4444FF">(</font><font color="#2040a0">pdev</font>, <font color="#FF0000">3096</font>, <font color="#2040a0">mydev_data</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">dma_bus_rx</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

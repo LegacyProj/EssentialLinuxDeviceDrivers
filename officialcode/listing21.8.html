@@ -1,0 +1,42 @@
+<html>
+<head>
+  <title>Listing 21.8</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<strong>struct</strong> <font color="#2040a0">mydriver_data</font> <font color="#2040a0">driver_data</font><font color="4444FF">;</font> <font color="#444444">/* Private device structure */</font>
+
+<font color="#444444">/* Driver read() method */</font>
+<font color="#2040a0">ssize_t</font>
+<font color="#2040a0">mydriver_read</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">file</font> <font color="4444FF">*</font><font color="#2040a0">file</font>, <strong>char</strong> <font color="4444FF">*</font><font color="#2040a0">buf</font>,
+              <font color="#2040a0">size_t</font> <font color="#2040a0">count</font>, <font color="#2040a0">loff_t</font> <font color="4444FF">*</font><font color="#2040a0">ppos</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>char</strong> <font color="4444FF">*</font><font color="#2040a0">buffer</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Read numbytes bytes of data from the device into
+       buffer */</font>
+    <font color="#444444">/* ... */</font>
+
+    <font color="#444444">/* Dump data Packet. If you see the problem only
+       under certain conditions, say, when the packet length is
+       greater than a value, use that as a filter */</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">condition</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#444444">/* See Listing 21.7 for the definition of data_packet*/</font>
+        <font color="#2040a0">trace_raw_event</font><font color="4444FF">(</font><font color="#2040a0">data_packet</font>, <font color="#2040a0">numbytes</font>, <font color="#2040a0">buffer</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#444444">/* Dump driver data structures */</font>
+    <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">some_other_condition</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#444444">/* See Listing 21.7 for the definition of driver_data */</font>
+        <font color="#2040a0">trace_raw_event</font><font color="4444FF">(</font><font color="#2040a0">driver_data</font>, <strong>sizeof</strong><font color="4444FF">(</font><font color="#2040a0">driver_data</font><font color="4444FF">)</font>, <font color="4444FF">&amp;</font><font color="#2040a0">driver_data</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

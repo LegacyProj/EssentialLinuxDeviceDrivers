@@ -1,0 +1,51 @@
+<html>
+<head>
+  <title>Listing 4.3</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<strong>struct</strong> <font color="#2040a0">roller_device_struct</font> <font color="4444FF"><strong>{</strong></font> <font color="#444444">/* Device-specific structure */</font>
+    <font color="#444444">/* ... */</font>
+    <strong>struct</strong> <font color="#2040a0">tasklet_struct</font> <font color="#2040a0">tsklt</font><font color="4444FF">;</font>
+    <font color="#444444">/* ... */</font>
+<font color="4444FF"><strong>}</strong></font><font color="4444FF">;</font>
+
+<strong>void</strong> <font color="#2040a0">__init</font> <font color="#2040a0">roller_init</font><font color="4444FF">(</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>struct</strong> <font color="#2040a0">roller_device_struct</font> <font color="4444FF">*</font><font color="#2040a0">dev_struct</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* ... */</font>
+
+    <font color="#444444">/* Initialize tasklet */</font>
+    <font color="#2040a0">tasklet_init</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">dev_struct</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">tsklt</font>, <font color="#2040a0">roller_analyze</font>, <font color="#2040a0">dev</font><font color="4444FF">)</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* The bottom half */</font>
+<strong>void</strong>
+<font color="#2040a0">roller_analyze</font><font color="4444FF">(</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#444444">/* Analyze the waveforms and switch to
+       polled mode if required */</font>
+<font color="4444FF"><strong>}</strong></font>
+
+<font color="#444444">/* The interrupt handler */</font>
+<strong>static</strong> <font color="#2040a0">irqreturn_t</font>
+<font color="#2040a0">roller_interrupt</font><font color="4444FF">(</font><strong>int</strong> <font color="#2040a0">irq</font>, <strong>void</strong> <font color="4444FF">*</font><font color="#2040a0">dev_id</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>struct</strong> <font color="#2040a0">roller_device_struct</font> <font color="4444FF">*</font><font color="#2040a0">dev_struct</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Capture the wave stream */</font>
+    <font color="#2040a0">roller_capture</font><font color="4444FF">(</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Mark tasklet as pending */</font>
+    <font color="#2040a0">tasklet_schedule</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">dev_struct</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">tsklt</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <strong>return</strong> <font color="#2040a0">IRQ_HANDLED</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

@@ -1,0 +1,57 @@
+<html>
+<head>
+  <title>Listing 5.5</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<font color="0000ff"><strong>#define CMOS_ADJUST_CHECKSUM 1</strong></font>
+<font color="0000ff"><strong>#define CMOS_VERIFY_CHECKSUM 2</strong></font>
+<font color="0000ff"><strong>#define CMOS_BANK1_CRC_OFFSET 0x1E</strong></font>
+
+<font color="#444444">/*
+ * Ioctls to adjust and verify CRC16s.
+ */</font>
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">cmos_ioctl</font><font color="4444FF">(</font><strong>struct</strong> <font color="#2040a0">inode</font> <font color="4444FF">*</font><font color="#2040a0">inode</font>, <strong>struct</strong> <font color="#2040a0">file</font> <font color="4444FF">*</font><font color="#2040a0">file</font>,
+           <strong>unsigned</strong> <strong>int</strong> <font color="#2040a0">cmd</font>, <strong>unsigned</strong> <strong>long</strong> <font color="#2040a0">arg</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <strong>unsigned</strong> <strong>short</strong> <font color="#2040a0">crc</font> <font color="4444FF">=</font> <font color="#FF0000">0</font><font color="4444FF">;</font>
+    <strong>unsigned</strong> <strong>char</strong> <font color="#2040a0">buf</font><font color="4444FF">;</font>
+
+    <strong>switch</strong> <font color="4444FF">(</font><font color="#2040a0">cmd</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+    <strong>case</strong> <font color="#2040a0">CMOS_ADJUST_CHECKSUM</font><font color="4444FF">:</font>
+        <font color="#444444">/* Calculate the CRC of bank0 using a seed of 0 */</font>
+        <font color="#2040a0">crc</font> <font color="4444FF">=</font> <font color="#2040a0">adjust_cmos_crc</font><font color="4444FF">(</font><font color="#FF0000">0</font>, <font color="#FF0000">0</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#444444">/* Seed bank1 with CRC of bank0 */</font>
+        <font color="#2040a0">crc</font> <font color="4444FF">=</font> <font color="#2040a0">adjust_cmos_crc</font><font color="4444FF">(</font><font color="#FF0000">1</font>, <font color="#2040a0">crc</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#444444">/* Store calculated CRC */</font>
+        <font color="#2040a0">port_data_out</font><font color="4444FF">(</font><font color="#2040a0">CMOS_BANK1_CRC_OFFSET</font>,
+                      <font color="4444FF">(</font><strong>unsigned</strong> <strong>char</strong><font color="4444FF">)</font><font color="4444FF">(</font><font color="#2040a0">crc</font> <font color="4444FF">&amp;</font> <font color="#FF0000">0xFF</font><font color="4444FF">)</font>, <font color="#FF0000">1</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#2040a0">port_data_out</font><font color="4444FF">(</font><font color="4444FF">(</font><font color="#2040a0">CMOS_BANK1_CRC_OFFSET</font> <font color="4444FF">+</font> <font color="#FF0000">1</font><font color="4444FF">)</font>,
+                      <font color="4444FF">(</font><strong>unsigned</strong> <strong>char</strong><font color="4444FF">)</font> <font color="4444FF">(</font><font color="#2040a0">crc</font> <font color="4444FF">&gt;</font><font color="4444FF">&gt;</font> <font color="#FF0000">8</font><font color="4444FF">)</font>, <font color="#FF0000">1</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <strong>break</strong><font color="4444FF">;</font>
+    <strong>case</strong> <font color="#2040a0">CMOS_VERIFY_CHECKSUM</font><font color="4444FF">:</font>
+        <font color="#444444">/* Calculate the CRC of bank0 using a seed of 0 */</font>
+        <font color="#2040a0">crc</font> <font color="4444FF">=</font> <font color="#2040a0">adjust_cmos_crc</font><font color="4444FF">(</font><font color="#FF0000">0</font>, <font color="#FF0000">0</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#444444">/* Seed bank1 with CRC of bank0 */</font>
+        <font color="#2040a0">crc</font> <font color="4444FF">=</font> <font color="#2040a0">adjust_cmos_crc</font><font color="4444FF">(</font><font color="#FF0000">1</font>, <font color="#2040a0">crc</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#444444">/* Compare the calculated CRC with the stored CRC */</font>
+        <font color="#2040a0">buf</font> <font color="4444FF">=</font> <font color="#2040a0">port_data_in</font><font color="4444FF">(</font><font color="#2040a0">CMOS_BANK1_CRC_OFFSET</font>, <font color="#FF0000">1</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">buf</font> <font color="4444FF">!</font><font color="4444FF">=</font> <font color="4444FF">(</font><strong>unsigned</strong> <strong>char</strong><font color="4444FF">)</font> <font color="4444FF">(</font><font color="#2040a0">crc</font> <font color="4444FF">&amp;</font> <font color="#FF0000">0xFF</font><font color="4444FF">)</font><font color="4444FF">)</font> <strong>return</strong> <font color="4444FF">-</font><font color="#2040a0">EINVAL</font><font color="4444FF">;</font>
+        <font color="#2040a0">buf</font> <font color="4444FF">=</font> <font color="#2040a0">port_data_in</font><font color="4444FF">(</font><font color="4444FF">(</font><font color="#2040a0">CMOS_BANK1_CRC_OFFSET</font><font color="4444FF">+</font><font color="#FF0000">1</font><font color="4444FF">)</font>, <font color="#FF0000">1</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">buf</font> <font color="4444FF">!</font><font color="4444FF">=</font> <font color="4444FF">(</font><strong>unsigned</strong> <strong>char</strong><font color="4444FF">)</font><font color="4444FF">(</font><font color="#2040a0">crc</font> <font color="4444FF">&gt;</font><font color="4444FF">&gt;</font> <font color="#FF0000">8</font><font color="4444FF">)</font><font color="4444FF">)</font> <strong>return</strong> <font color="4444FF">-</font><font color="#2040a0">EINVAL</font><font color="4444FF">;</font>
+        <strong>break</strong><font color="4444FF">;</font>
+        
+    <strong>default</strong><font color="4444FF">:</font>
+        <strong>return</strong> <font color="4444FF">-</font><font color="#2040a0">EIO</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font>
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>

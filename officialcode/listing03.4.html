@@ -1,0 +1,65 @@
+<html>
+<head>
+  <title>Listing 3.4</title>
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<pre>
+
+<strong>static</strong> <strong>int</strong>
+<font color="#2040a0">mydrv_worker</font><font color="4444FF">(</font><strong>void</strong> <font color="4444FF">*</font><font color="#2040a0">unused</font><font color="4444FF">)</font>
+<font color="4444FF"><strong>{</strong></font>
+    <font color="#2040a0">DECLARE_WAITQUEUE</font><font color="4444FF">(</font><font color="#2040a0">wait</font>, <font color="#2040a0">current</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>void</strong> <font color="4444FF">(</font><font color="4444FF">*</font><font color="#2040a0">worker_func</font><font color="4444FF">)</font><font color="4444FF">(</font><strong>void</strong> <font color="4444FF">*</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>void</strong> <font color="4444FF">*</font><font color="#2040a0">worker_data</font><font color="4444FF">;</font>
+    <strong>struct</strong> <font color="#2040a0">_mydrv_work</font> <font color="4444FF">*</font><font color="#2040a0">mydrv_work</font><font color="4444FF">;</font>
+
+    <font color="#2040a0">set_current_state</font><font color="4444FF">(</font><font color="#2040a0">TASK_INTERRUPTIBLE</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+    <font color="#444444">/* Spin until asked to die */</font>
+    <strong>while</strong> <font color="4444FF">(</font><font color="4444FF">!</font><font color="#2040a0">asked_to_die</font><font color="4444FF">(</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+        <font color="#2040a0">add_wait_queue</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">mydrv_wq</font>.<font color="#2040a0">todo</font>, <font color="4444FF">&amp;</font><font color="#2040a0">wait</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+        <strong>if</strong> <font color="4444FF">(</font><font color="#2040a0">list_empty</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">mydrv_wq</font>.<font color="#2040a0">mydrv_worklist</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+            <font color="#2040a0">schedule</font><font color="4444FF">(</font><font color="4444FF">)</font><font color="4444FF">;</font>
+            <font color="#444444">/* Woken up by the submitter */</font>
+        <font color="4444FF"><strong>}</strong></font> <strong>else</strong> <font color="4444FF"><strong>{</strong></font>
+            <font color="#2040a0">set_current_state</font><font color="4444FF">(</font><font color="#2040a0">TASK_RUNNING</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="4444FF"><strong>}</strong></font>
+
+        <font color="#2040a0">remove_wait_queue</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">mydrv_wq</font>.<font color="#2040a0">todo</font>, <font color="4444FF">&amp;</font><font color="#2040a0">wait</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+        <font color="#444444">/* Protect concurrent access to the list */</font>
+        <font color="#2040a0">spin_lock</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">mydrv_wq</font>.<font color="#2040a0">lock</font><font color="4444FF">)</font><font color="4444FF">;</font>
+
+        <font color="#444444">/* Traverse the list and plough through the work functions
+           present in each node */</font>
+
+        <strong>while</strong> <font color="4444FF">(</font><font color="4444FF">!</font><font color="#2040a0">list_empty</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">mydrv_wq</font>.<font color="#2040a0">mydrv_worklist</font><font color="4444FF">)</font><font color="4444FF">)</font> <font color="4444FF"><strong>{</strong></font>
+            <font color="#444444">/* Get the first entry in the list */</font>
+            <font color="#2040a0">mydrv_work</font> <font color="4444FF">=</font> <font color="#2040a0">list_entry</font><font color="4444FF">(</font><font color="#2040a0">mydrv_wq</font>.<font color="#2040a0">mydrv_worklist</font>.<font color="#2040a0">next</font>,
+                                    <strong>struct</strong> <font color="#2040a0">_mydrv_work</font>, <font color="#2040a0">mydrv_workitem</font><font color="4444FF">)</font><font color="4444FF">;</font>
+            <font color="#2040a0">worker_func</font> <font color="4444FF">=</font> <font color="#2040a0">mydrv_work</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">worker_func</font><font color="4444FF">;</font>
+            <font color="#2040a0">worker_data</font> <font color="4444FF">=</font> <font color="#2040a0">mydrv_work</font><font color="4444FF">-</font><font color="4444FF">&gt;</font><font color="#2040a0">worker_data</font><font color="4444FF">;</font>
+            <font color="#444444">/* This node has been processed. Throw it
+               out of the list */</font>
+            <font color="#2040a0">list_del</font><font color="4444FF">(</font><font color="#2040a0">mydrv_wq</font>.<font color="#2040a0">mydrv_worklist</font>.<font color="#2040a0">next</font><font color="4444FF">)</font><font color="4444FF">;</font>
+            <font color="#2040a0">kfree</font><font color="4444FF">(</font><font color="#2040a0">mydrv_work</font><font color="4444FF">)</font><font color="4444FF">;</font> <font color="#444444">/* Free the node */</font>
+            <font color="#444444">/* Execute the work function in this node */</font>
+            <font color="#2040a0">spin_unlock</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">mydrv_wq</font>.<font color="#2040a0">lock</font><font color="4444FF">)</font><font color="4444FF">;</font> <font color="#444444">/* Release lock */</font>
+            <font color="#2040a0">worker_func</font><font color="4444FF">(</font><font color="#2040a0">worker_data</font><font color="4444FF">)</font><font color="4444FF">;</font>
+            <font color="#2040a0">spin_lock</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">mydrv_wq</font>.<font color="#2040a0">lock</font><font color="4444FF">)</font><font color="4444FF">;</font> <font color="#444444">/* Re-acquire lock */</font>
+        <font color="4444FF"><strong>}</strong></font>
+
+        <font color="#2040a0">spin_unlock</font><font color="4444FF">(</font><font color="4444FF">&amp;</font><font color="#2040a0">mydrv_wq</font>.<font color="#2040a0">lock</font><font color="4444FF">)</font><font color="4444FF">;</font>
+        <font color="#2040a0">set_current_state</font><font color="4444FF">(</font><font color="#2040a0">TASK_INTERRUPTIBLE</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <font color="4444FF"><strong>}</strong></font>
+
+    <font color="#2040a0">set_current_state</font><font color="4444FF">(</font><font color="#2040a0">TASK_RUNNING</font><font color="4444FF">)</font><font color="4444FF">;</font>
+    <strong>return</strong> <font color="#FF0000">0</font><font color="4444FF">;</font>
+<font color="4444FF"><strong>}</strong></font> 
+
+</pre>
+<hr>
+syntax highlighted by <a href="http://www.palfrader.org/code2html">Code2HTML</a>, v. 0.9.1
+</body>
+</html>
